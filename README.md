@@ -1,2 +1,2 @@
 # launtel_changer
-A simple Launtel Speed Changer
+Mick's Launtel Speed Scripter
