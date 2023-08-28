@@ -1,9 +1,11 @@
 # launtel_changer
 Mick's Launtel Speed Scripter
 
-
+````
 pip install --user -r ./requirements.tx
+````
 
+````
 ./mlss.py --help
 usage: mlss.py [-h] [-p PSID] [-c] [-d]
 
@@ -14,6 +16,7 @@ options:
   -p PSID, --psid PSID  Launtel Speed PSID
   -c, --commit          Commit to Launtel.
   -d, --debug           Debug logging to stderr.
+````
 
 Optional: Configure variables _USERNAME and or _PASSWORD with your Launtel login details, if not configured the script will interactively prompt for username or password which ever is not set. 
 
