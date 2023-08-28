@@ -78,8 +78,7 @@ args = parser.parse_args()
 if args.debug is True:
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     logger = logging.getLogger(__name__)
-    if logger.isEnabledFor(logging.DEBUG):
-        logging.debug('Debug is True.')
+    logging.debug('Debug is True.')
 else:
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -90,8 +89,7 @@ if args.psid is not None:
 
 # get the arguments value for commit
 if args.commit is True:
-    if logger.isEnabledFor(logging.INFO):
-        logging.info('Commit is True.')
+    logging.info('Commit is True.')
     _COMMIT = True
 else:
     logging.info('Commit is False.')
@@ -99,15 +97,13 @@ else:
 
 # if not set, get the users credentials
 if _USERNAME == '' or _PASSWORD == '':
-    if logger.isEnabledFor(logging.INFO):
-        logging.info(f'{_ISP} username or password not set.')
+    logging.info('%s username or password not set.', _ISP)
     _isp_credentials = get_credentials(f'Enter your {_ISP} credentials:')
     _USERNAME = _isp_credentials[0]
     _PASSWORD = _isp_credentials[1]
 
 if _USERNAME == '' or _PASSWORD == '':
-    if logger.isEnabledFor(logging.INFO):
-        logging.info(f'Quiting, {_ISP} username or password not set.')
+    logging.info('Quiting, %s username or password not set.', _ISP)
     sys.exit()
 
 br = Browser()
@@ -121,31 +117,23 @@ br.form['password'] = _PASSWORD
 LOGIN_RESPONSE = br.submit()  # pylint: disable=assignment-from-none
 status_code = LOGIN_RESPONSE.code
 if status_code not in range(200, 299):
-    if logger.isEnabledFor(logging.INFO):
-        logging.info('Login Failure.')
-    if logger.isEnabledFor(logging.DEBUG):
-        logging.debug('HTTP status_code  : {status_code}.')
+    logging.info('Login Failure.')
+    logging.debug('HTTP status_code : %s', status_code)
     sys.exit()
 else:
-    if logger.isEnabledFor(logging.INFO):
-        logging.info('Login Seccessful.')
-    if logger.isEnabledFor(logging.DEBUG):
-        logging.debug('HTTP status_code : {status_code}')
+    logging.info('Login Successful.')
+    logging.debug('HTTP status_code : %s', status_code)
 
 COOKIES = br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
 for cookie in COOKIES:
     if cookie.name == "session_id":
         _SESSION_ID = cookie.value
-        logging.debug(f'{cookie.name}={cookie.value}')
-
-if logger.isEnabledFor(logging.DEBUG):
-    logging.debug(f'url:{br.geturl()}')
+        logging.debug('%s=%s', cookie.name, _SESSION_ID)
 
 SERVICES = br.follow_link(text='Services').read()
-if logger.isEnabledFor(logging.DEBUG):
-    logging.debug(f'url:{br.geturl()}')
-SERVICE_DETAILS_LINK = br.find_link(
-    text='Show Advanced Info')  # pylint: disable=assignment-from-none
+logging.debug('url:%s', br.geturl())
+SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
+    text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
 SERVICE_URL = SERVICE_DETAILS_LINK.url.replace('service_details', 'service')
 SERVICE_LINK = Link(
@@ -156,10 +144,10 @@ SERVICE_LINK = Link(
     attrs=[
         ('href',
          SERVICE_URL)])
+
 SERVICE = br.follow_link(SERVICE_LINK).read()
 SERVICE_SOUP = BeautifulSoup(SERVICE, features='lxml')
-if logger.isEnabledFor(logging.DEBUG):
-    logging.debug(f'url:{br.geturl()}')
+logging.debug('url:%s', br.geturl())
 br.select_form(name='manage_service')
 SPEEDS = SERVICE_SOUP.find_all('span', attrs={'data-value': True})
 
@@ -175,13 +163,20 @@ for speed in SPEEDS:
     speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
     speed_psid = speed.get('data-value')
     if _PSID == speed_psid:
-        if logger.isEnabledFor(logging.INFO):
-            logging.info('Requested psid is valid.')
+        logging.info('Requested psid is valid.')
         _PSID_VALID = True
 
 if _PSID_VALID is True:
     CONFIRM_SERVICE_BASE_URL = br.geturl()  # pylint: disable=assignment-from-none
-    CONFIRM_SERVICE_URL = f'/confirm_service?userid={_USERID}&psid={_PSID}&unpause={_UNPAUSE}&service_id={_SERVICE_ID}&upgrade_options={_UPGRADE_OPTIONS}&discount_code={_DISCOUNT_CODE}&avcid={_AVCID}&locid={_LOCID}&coat={_COAT}'
+    CONFIRM_SERVICE_URL = (f'/confirm_service?userid={_USERID}'
+                           f'&psid={_PSID}&'
+                           f'unpause={_UNPAUSE}&'
+                           f'service_id={_SERVICE_ID}&'
+                           f'upgrade_options={_UPGRADE_OPTIONS}&'
+                           f'discount_code={_DISCOUNT_CODE}&'
+                           f'avcid={_AVCID}&'
+                           f'locid={_LOCID}&'
+                           f'coat={_COAT}')
     CONFIRM_SERVICE_LINK = Link(
         base_url=CONFIRM_SERVICE_BASE_URL,
         url=CONFIRM_SERVICE_URL,
@@ -191,16 +186,13 @@ if _PSID_VALID is True:
             ('href',
              CONFIRM_SERVICE_URL)])
     CONFIRM_SERVICE = br.follow_link(CONFIRM_SERVICE_LINK).read()
-    if logger.isEnabledFor(logging.DEBUG):
-        logging.debug(f'url:{br.geturl()}')
+    logging.debug('url:%s', br.geturl())
     CONFIRM_SERVICE_SOUP = BeautifulSoup(CONFIRM_SERVICE, features='lxml')
 else:
-    if logger.isEnabledFor(logging.INFO):
-        logging.info("Requested psid is not valid.")
+    logging.info("Requested psid is not valid.")
     sys.exit()
 
 if _COMMIT is True:
     br.select_form(name='confirm_service')
     br.submit()
-    if logger.isEnabledFor(logging.DEBUG):
-        logging.debug(f'url:{br.geturl()}')
+    logging.debug('url:%s', br.geturl())
