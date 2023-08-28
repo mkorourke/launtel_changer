@@ -11,7 +11,7 @@ from mechanize import Browser
 from mechanize import Link
 
 _USERNAME = ''
-_PASSWORD = ''
+_PASSWORD = '' # More ideally use a vault or password manager integration
 
 _BASE_URL = 'https://residential.launtel.net.au'
 _LOGIN_URL = f'{_BASE_URL}/login'
