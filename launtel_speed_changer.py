@@ -6,28 +6,16 @@ import argparse
 import getpass
 import logging
 import sys
+from bs4 import BeautifulSoup
 from mechanize import Browser
 from mechanize import Link
-from bs4 import BeautifulSoup
 
 _USERNAME = ''
 _PASSWORD = ''
+
 _BASE_URL = 'https://residential.launtel.net.au'
 _LOGIN_URL = f'{_BASE_URL}/login'
 _ISP = "Launtel"
-
-_USERID = ''
-_PSID = ''
-_UNPAUSE = '0'
-_SERVICE_ID = ''
-_UPGRADE_OPTIONS = ''
-_DISCOUNT_CODE = ''
-_AVCID = ''
-_LOCID = ''
-_COAT = ''
-_SESSION_ID = ''
-_PSID_VALID = False
-
 
 def get_credentials(prompt):
     """
@@ -55,7 +43,6 @@ def get_credentials(prompt):
         else:
             password = _PASSWORD
     return [username, password]
-
 
 parser = argparse.ArgumentParser(
     description='Launtel Speed Info and Change CLI')
@@ -86,6 +73,8 @@ else:
 # get the arguments value for psid
 if args.psid is not None:
     _PSID = args.psid
+else:
+    _PSID = ''
 
 # get the arguments value for commit
 if args.commit is True:
@@ -114,15 +103,16 @@ br.open(_LOGIN_URL)
 br.select_form(id='login-form')
 br.form['username'] = _USERNAME
 br.form['password'] = _PASSWORD
-LOGIN_RESPONSE = br.submit()  # pylint: disable=assignment-from-none
-status_code = LOGIN_RESPONSE.code
-if status_code not in range(200, 299):
+LOGIN = br.submit().read()  # pylint: disable=assignment-from-none
+LOGIN_SOUP = BeautifulSoup(LOGIN, features='lxml')
+LOGIN_STATUS = LOGIN_SOUP.find('div', attrs={'class': 'alert-content'}).text.strip()
+
+if LOGIN_STATUS == 'Sorry incorrect login details':
     logging.info('Login Failure.')
-    logging.debug('HTTP status_code : %s', status_code)
+    logging.debug('%s alert content : %s', _ISP, LOGIN_STATUS)
     sys.exit()
 else:
     logging.info('Login Successful.')
-    logging.debug('HTTP status_code : %s', status_code)
 
 COOKIES = br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
 for cookie in COOKIES:
@@ -132,6 +122,7 @@ for cookie in COOKIES:
 
 SERVICES = br.follow_link(text='Services').read()
 logging.debug('url:%s', br.geturl())
+
 SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
     text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
@@ -144,13 +135,24 @@ SERVICE_LINK = Link(
     attrs=[
         ('href',
          SERVICE_URL)])
-
 SERVICE = br.follow_link(SERVICE_LINK).read()
 SERVICE_SOUP = BeautifulSoup(SERVICE, features='lxml')
 logging.debug('url:%s', br.geturl())
 br.select_form(name='manage_service')
-SPEEDS = SERVICE_SOUP.find_all('span', attrs={'data-value': True})
 
+_USERID = SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
+_C_PSID = SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
+_UNPAUSE = SERVICE_SOUP.find('input', attrs={'name': 'unpause'}).get('value')
+_SERVICE_ID = SERVICE_SOUP.find('input', attrs={'name': 'service_id'}).get('value')
+_UPGRADE_OPTIONS = SERVICE_SOUP.find('input', attrs={'name': 'upgrade_options'}).get('value')
+_DISCOUNT_CODE = '' # /check_discount/0/{_AVCID}/
+_AVCID = SERVICE_SOUP.find('input', attrs={'name': 'avcid'}).get('value')
+_LOCID = SERVICE_SOUP.find('input', attrs={'name': 'locid'}).get('value')
+_COAT = SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
+_PSID_VALID = False
+
+logging.info('Current psid:%s', _C_PSID)
+SPEEDS = SERVICE_SOUP.find_all('span', attrs={'data-value': True})
 for speed in SPEEDS:
     speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
     speed_psid = speed.get('data-value')
