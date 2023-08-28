@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 Purpose: Module for Launtel Speed Info and Change via CLI
-Author: Mick O'Rourke
-Created: August 2023
 """
 import argparse
 import getpass
