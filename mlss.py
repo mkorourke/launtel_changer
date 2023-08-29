@@ -15,6 +15,7 @@ _PASSWORD = '' # More ideally use a vault or password manager integration
 
 _BASE_URL = 'https://residential.launtel.net.au'
 _LOGIN_URL = f'{_BASE_URL}/login'
+_SIGNOUT_URL = f'{_BASE_URL}/logout_user'
 _ISP = "Launtel"
 
 
@@ -136,6 +137,7 @@ if 'Active' in SERVICES_STATUS:
 else:
     logging.info('%s service status is not Active.', _ISP)
 
+
 SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
     text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
@@ -224,3 +226,15 @@ if _COMMIT is True:
         logging.info(
             '%s status is not "Change in progress", please check portal.',
             _ISP)
+
+logging.info('%s speed change script is complete, signing out.', _ISP)
+SIGNOUT_LINK = Link(
+    base_url=SERVICE_BASE_URL,
+    url=_SIGNOUT_URL,
+    text='Sign Out',
+    tag='a',
+    attrs=[
+        ('href',
+         _SIGNOUT_URL)])
+br.follow_link(SIGNOUT_LINK)
+logging.debug('url:%s', br.geturl())
