@@ -24,5 +24,7 @@ Use the -p option to define the Launtel PSID (or speed) specific to your discoun
 
 The script is a dry-run by default, use the -c option to commit the speed change to Luantel.
 
+Schedule with your preferred command scheduler.
+
 > [!Note]
 > Script is tested to support accounts with a single service, extra code would be neccessary to support accounts with multiple services.
