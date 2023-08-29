@@ -23,3 +23,6 @@ Optional: Configure variables _USERNAME and or _PASSWORD with your Launtel login
 Use the -p option to define the Launtel PSID (or speed) specific to your discount or plan. If not set the script will display PSIDs available and interactively prompt.
 
 The script is a dry-run by default, use the -c option to commit the speed change to Luantel.
+
+> [!NOTE]
+> Script is tested to support accounts with a single service, extra code would be neccessary to support accounts with multiple services.
