@@ -17,6 +17,7 @@ _BASE_URL = 'https://residential.launtel.net.au'
 _LOGIN_URL = f'{_BASE_URL}/login'
 _ISP = "Launtel"
 
+
 def get_credentials(prompt):
     """
     Generic funtion to prompt for credentials
@@ -43,6 +44,7 @@ def get_credentials(prompt):
         else:
             password = _PASSWORD
     return [username, password]
+
 
 parser = argparse.ArgumentParser(
     description='Launtel Speed Info and Change CLI')
@@ -105,7 +107,9 @@ br.form['username'] = _USERNAME
 br.form['password'] = _PASSWORD
 LOGIN = br.submit().read()  # pylint: disable=assignment-from-none
 LOGIN_SOUP = BeautifulSoup(LOGIN, features='lxml')
-LOGIN_STATUS = LOGIN_SOUP.find('div', attrs={'class': 'alert-content'}).text.strip()
+LOGIN_STATUS = LOGIN_SOUP.find(
+    'div', attrs={
+        'class': 'alert-content'}).text.strip()
 
 if LOGIN_STATUS == 'Sorry incorrect login details':
     logging.info('Login Failure.')
@@ -123,36 +127,49 @@ for cookie in COOKIES:
 SERVICES = br.follow_link(text='Services').read()
 logging.debug('url:%s', br.geturl())
 
+SERVICES_SOUP = BeautifulSoup(SERVICES, features='lxml')
+SERVICES_STATUS = SERVICES_SOUP.find(
+    'dl', attrs={'class': 'service-dl'}).text.strip()
+
+if 'Active' in SERVICES_STATUS:
+    logging.info('%s service status is Active.', _ISP)
+else:
+    logging.info('%s service status is not Active.', _ISP)
+
 SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
     text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
-SERVICE_URL = SERVICE_DETAILS_LINK.url.replace('service_details', 'service')
-SERVICE_LINK = Link(
+
+MODIFY_SERVICE_URL = SERVICE_DETAILS_LINK.url.replace('service_details', 'service')
+MODIFY_SERVICE_LINK = Link(
     base_url=SERVICE_BASE_URL,
-    url=SERVICE_URL,
+    url=MODIFY_SERVICE_URL,
     text='Modify Service',
     tag='a',
     attrs=[
         ('href',
-         SERVICE_URL)])
-SERVICE = br.follow_link(SERVICE_LINK).read()
-SERVICE_SOUP = BeautifulSoup(SERVICE, features='lxml')
+         MODIFY_SERVICE_URL)])
+MODIFY_SERVICE = br.follow_link(MODIFY_SERVICE_LINK).read()
+MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
 logging.debug('url:%s', br.geturl())
 br.select_form(name='manage_service')
 
-_USERID = SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
-_C_PSID = SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
-_UNPAUSE = SERVICE_SOUP.find('input', attrs={'name': 'unpause'}).get('value')
-_SERVICE_ID = SERVICE_SOUP.find('input', attrs={'name': 'service_id'}).get('value')
-_UPGRADE_OPTIONS = SERVICE_SOUP.find('input', attrs={'name': 'upgrade_options'}).get('value')
-_DISCOUNT_CODE = '' # /check_discount/0/{_AVCID}/
-_AVCID = SERVICE_SOUP.find('input', attrs={'name': 'avcid'}).get('value')
-_LOCID = SERVICE_SOUP.find('input', attrs={'name': 'locid'}).get('value')
-_COAT = SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
+_USERID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
+_C_PSID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
+_UNPAUSE = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'unpause'}).get('value')
+_SERVICE_ID = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={
+        'name': 'service_id'}).get('value')
+_UPGRADE_OPTIONS = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={'name': 'upgrade_options'}).get('value')
+_DISCOUNT_CODE = ''  # /check_discount/0/{_AVCID}/
+_AVCID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'avcid'}).get('value')
+_LOCID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'locid'}).get('value')
+_COAT = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
 _PSID_VALID = False
 
 logging.info('Current psid:%s', _C_PSID)
-SPEEDS = SERVICE_SOUP.find_all('span', attrs={'data-value': True})
+SPEEDS = MODIFY_SERVICE_SOUP.find_all('span', attrs={'data-value': True})
 for speed in SPEEDS:
     speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
     speed_psid = speed.get('data-value')
@@ -196,5 +213,14 @@ else:
 
 if _COMMIT is True:
     br.select_form(name='confirm_service')
-    br.submit()
+    CONFIRM = br.submit().read()
     logging.debug('url:%s', br.geturl())
+    CONFIRM_SOUP = BeautifulSoup(CONFIRM, features='lxml')
+    CONFIRM_STATUS = CONFIRM_SOUP.find(
+        'dl', attrs={'class': 'service-dl'}).text.strip()
+    if 'Change in progress' in CONFIRM_STATUS:
+        logging.info('%s status is "Change in progress".', _ISP)
+    else:
+        logging.info(
+            '%s status is not "Change in progress", please check portal.',
+            _ISP)
