@@ -2,7 +2,7 @@
 Mick's Launtel Speed Scripter
 
 ````
-pip install --user -r ./requirements.tx
+pip install --user -r ./requirements.txt
 ````
 
 ````
