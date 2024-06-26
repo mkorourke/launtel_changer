@@ -61,9 +61,14 @@ parser.add_argument(
     '--debug',
     action='store_true',
     help='Debug logging to stderr.')
+parser.add_argument(
+    '--latest',
+    action='store_true',
+    help='Use latest psid options')
 
 # parse the arguments
 args = parser.parse_args()
+
 
 if args.debug is True:
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -86,6 +91,14 @@ if args.commit is True:
 else:
     logging.info('Commit is False.')
     _COMMIT = False
+
+# get the arguments value for commit
+if args.latest is True:
+    logging.info('Use latest psid options is True.')
+    _LATEST = True
+else:
+    logging.info('Use latest psid options is False.')
+    _LATEST = False
 
 # if not set, get the users credentials
 if _USERNAME == '' or _PASSWORD == '':
@@ -155,6 +168,24 @@ MODIFY_SERVICE = br.follow_link(MODIFY_SERVICE_LINK).read()
 MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
 logging.debug('url:%s', br.geturl())
 br.select_form(name='manage_service')
+
+LATEST_PSID_BTN=MODIFY_SERVICE_SOUP.find("button", {"onclick":"showLatest()"})
+if LATEST_PSID_BTN is not None:
+    logging.info('%s available', LATEST_PSID_BTN.text)
+    LATEST_PSID_URL = f'{MODIFY_SERVICE_URL}&latest=1'
+    LATEST_PSID_LINK = Link(
+        base_url=SERVICE_BASE_URL,
+        url=LATEST_PSID_URL,
+        text='Show Latest Pricing Options',
+        tag='a',
+        attrs=[
+            ('href',
+            LATEST_PSID_URL)])
+    if _LATEST is True:
+        MODIFY_SERVICE = br.follow_link(LATEST_PSID_LINK).read()
+        MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
+        logging.debug('url:%s', br.geturl())
+        br.select_form(name='manage_service')
 
 _USERID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
 _C_PSID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
