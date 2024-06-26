@@ -187,6 +187,8 @@ if LATEST_PSID_BTN is not None:
         MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
         logging.debug('url:%s', br.geturl())
         br.select_form(name='manage_service')
+else:
+    logging.info('No latest psid options')
 
 _USERID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
 _C_PSID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
@@ -202,12 +204,19 @@ _LOCID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'locid'}).get('value')
 _COAT = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
 _PSID_VALID = False
 
-logging.info('Current psid:%s', _C_PSID)
 SPEEDS = MODIFY_SERVICE_SOUP.find_all('span', attrs={'data-value': True})
+for speed in SPEEDS:
+    speed_psid = speed.get('data-value')
+    if speed_psid == _C_PSID:
+        speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
+        _C_TIER = speed_name
+logging.info('Your speed psid:%s', _C_PSID)
+logging.info('Your speed tier:%s', _C_TIER)  
 for speed in SPEEDS:
     speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
     speed_psid = speed.get('data-value')
-    print(f'psid={speed_psid},name={speed_name}')
+    speed_daily_spend = speed.get('data-plancharge')
+    print(f'psid={speed_psid},name={speed_name},daily_spend={speed_daily_spend}')
 
 if _PSID == '':
     _PSID = input('Please enter psid: ')
