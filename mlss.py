@@ -62,6 +62,7 @@ parser.add_argument(
     action='store_true',
     help='Debug logging to stderr.')
 parser.add_argument(
+    '-l',
     '--latest',
     action='store_true',
     help='Use latest psid options')
