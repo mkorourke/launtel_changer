@@ -7,7 +7,7 @@ pip install --user -r ./requirements.txt
 
 ````
 ./mlss.py --help
-usage: mlss.py [-h] [-p PSID] [-c] [-d]
+usage: mlss.py [-h] [-p PSID] [-c] [-l] [-d]
 
 Launtel Speed Info and Change CLI
 
@@ -15,6 +15,7 @@ options:
   -h, --help            show this help message and exit
   -p PSID, --psid PSID  Launtel Speed PSID
   -c, --commit          Commit to Launtel.
+  -l, --latest          Use latest psid options.
   -d, --debug           Debug logging to stderr.
 ````
 

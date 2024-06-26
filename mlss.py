@@ -57,15 +57,15 @@ parser.add_argument(
     action='store_true',
     help=f'Commit to {_ISP}.')
 parser.add_argument(
+    '-l',
+    '--latest',
+    action='store_true',
+    help='Use latest psid options.')
+parser.add_argument(
     '-d',
     '--debug',
     action='store_true',
     help='Debug logging to stderr.')
-parser.add_argument(
-    '-l',
-    '--latest',
-    action='store_true',
-    help='Use latest psid options')
 
 # parse the arguments
 args = parser.parse_args()
