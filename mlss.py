@@ -14,12 +14,13 @@ from rich.table import Table
 from rich.console import Console
 
 _USERNAME = ''
-_PASSWORD = '' # More ideally use a vault or password manager integration
+_PASSWORD = ''  # More ideally use a vault or password manager integration
 
 _BASE_URL = 'https://residential.launtel.net.au'
 _LOGIN_URL = f'{_BASE_URL}/login'
 _SIGNOUT_URL = f'{_BASE_URL}/logout_user'
 _ISP = "Launtel"
+
 
 def get_speeds_table(_title):
     """
@@ -36,6 +37,7 @@ def get_speeds_table(_title):
     table.add_column('SPEND')
     return table
 
+
 def add_speeds_table_row(
         _table,
         _psid,
@@ -47,12 +49,14 @@ def add_speeds_table_row(
     _table.add_row(*(_psid, _speed_name, _daily_spend))
     return _table
 
+
 def print_table(_table):
     """
     Print a table
     """
     _console = Console()
     _console.print(_table)
+
 
 def get_credentials(prompt):
     """
@@ -190,7 +194,8 @@ SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
     text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
 
-MODIFY_SERVICE_URL = SERVICE_DETAILS_LINK.url.replace('service_details', 'service')
+MODIFY_SERVICE_URL = SERVICE_DETAILS_LINK.url.replace(
+    'service_details', 'service')
 MODIFY_SERVICE_LINK = Link(
     base_url=SERVICE_BASE_URL,
     url=MODIFY_SERVICE_URL,
@@ -204,7 +209,8 @@ MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
 logging.debug('url:%s', br.geturl())
 br.select_form(name='manage_service')
 
-LATEST_PSID_BTN=MODIFY_SERVICE_SOUP.find("button", {"onclick":"showLatest()"})
+LATEST_PSID_BTN = MODIFY_SERVICE_SOUP.find(
+    "button", {"onclick": "showLatest()"})
 if LATEST_PSID_BTN is not None:
     logging.debug('%s available', LATEST_PSID_BTN.text)
     LATEST_PSID_URL = f'{MODIFY_SERVICE_URL}&latest=1'
@@ -215,7 +221,7 @@ if LATEST_PSID_BTN is not None:
         tag='a',
         attrs=[
             ('href',
-            LATEST_PSID_URL)])
+             LATEST_PSID_URL)])
     if _LATEST is True:
         MODIFY_SERVICE = br.follow_link(LATEST_PSID_LINK).read()
         MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
@@ -224,17 +230,22 @@ if LATEST_PSID_BTN is not None:
 else:
     logging.debug('No latest psid options')
 
-_USERID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
-_C_PSID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
-_UNPAUSE = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'unpause'}).get('value')
+_USERID = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={'name': 'userid'}).get('value')
+_C_PSID = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={'name': 'psid'}).get('value')
+_UNPAUSE = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={'name': 'unpause'}).get('value')
 _SERVICE_ID = MODIFY_SERVICE_SOUP.find(
     'input', attrs={
         'name': 'service_id'}).get('value')
 _UPGRADE_OPTIONS = MODIFY_SERVICE_SOUP.find(
     'input', attrs={'name': 'upgrade_options'}).get('value')
 _DISCOUNT_CODE = ''  # /check_discount/0/{_AVCID}/
-_AVCID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'avcid'}).get('value')
-_LOCID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'locid'}).get('value')
+_AVCID = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={'name': 'avcid'}).get('value')
+_LOCID = MODIFY_SERVICE_SOUP.find(
+    'input', attrs={'name': 'locid'}).get('value')
 _COAT = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
 _PSID_VALID = False
 
@@ -267,7 +278,8 @@ for key, values in _SPEEDS_DICT.items():
         speed_psid = f'[bright_yellow]{speed_psid}[/bright_yellow]'
         speed_name = f'[bright_yellow]{speed_name}[/bright_yellow]'
         speed_daily_spend = f'[bright_yellow]{speed_daily_spend}[/bright_yellow]'
-    SPEEDS_TABLE = add_speeds_table_row(SPEEDS_TABLE,speed_psid,speed_name,speed_daily_spend)
+    SPEEDS_TABLE = add_speeds_table_row(
+        SPEEDS_TABLE, speed_psid, speed_name, speed_daily_spend)
 
 print_table(SPEEDS_TABLE)
 
