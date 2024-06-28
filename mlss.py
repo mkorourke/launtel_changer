@@ -9,6 +9,9 @@ import sys
 from bs4 import BeautifulSoup
 from mechanize import Browser
 from mechanize import Link
+from rich import box
+from rich.table import Table
+from rich.console import Console
 
 _USERNAME = ''
 _PASSWORD = '' # More ideally use a vault or password manager integration
@@ -18,6 +21,38 @@ _LOGIN_URL = f'{_BASE_URL}/login'
 _SIGNOUT_URL = f'{_BASE_URL}/logout_user'
 _ISP = "Launtel"
 
+def get_speeds_table(_title):
+    """
+    Create a new speeds table
+    """
+    table = Table(
+        show_header=True,
+        header_style='bold magenta',
+        title=_title,
+        box=box.SQUARE,
+        show_lines=True)
+    table.add_column('PSID')
+    table.add_column('SPEED')
+    table.add_column('SPEND')
+    return table
+
+def add_speeds_table_row(
+        _table,
+        _psid,
+        _speed_name,
+        _daily_spend):
+    """
+    Add a row to a speeds table
+    """
+    _table.add_row(*(_psid, _speed_name, _daily_spend))
+    return _table
+
+def print_table(_table):
+    """
+    Print a table
+    """
+    _console = Console()
+    _console.print(_table)
 
 def get_credentials(prompt):
     """
@@ -70,7 +105,6 @@ parser.add_argument(
 # parse the arguments
 args = parser.parse_args()
 
-
 if args.debug is True:
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     logger = logging.getLogger(__name__)
@@ -87,29 +121,29 @@ else:
 
 # get the arguments value for commit
 if args.commit is True:
-    logging.info('Commit is True.')
+    logging.debug('Commit is True.')
     _COMMIT = True
 else:
-    logging.info('Commit is False.')
+    logging.debug('Commit is False.')
     _COMMIT = False
 
 # get the arguments value for commit
 if args.latest is True:
-    logging.info('Use latest psid options is True.')
+    logging.debug('Use latest psid options is True.')
     _LATEST = True
 else:
-    logging.info('Use latest psid options is False.')
+    logging.debug('Use latest psid options is False.')
     _LATEST = False
 
 # if not set, get the users credentials
 if _USERNAME == '' or _PASSWORD == '':
-    logging.info('%s username or password not set.', _ISP)
+    logging.debug('%s username or password not set.', _ISP)
     _isp_credentials = get_credentials(f'Enter your {_ISP} credentials:')
     _USERNAME = _isp_credentials[0]
     _PASSWORD = _isp_credentials[1]
 
 if _USERNAME == '' or _PASSWORD == '':
-    logging.info('Quiting, %s username or password not set.', _ISP)
+    logging.error('Quiting, %s username or password not set.', _ISP)
     sys.exit()
 
 br = Browser()
@@ -127,7 +161,7 @@ LOGIN_STATUS = LOGIN_SOUP.find(
         'class': 'alert-content'}).text.strip()
 
 if LOGIN_STATUS == 'Sorry incorrect login details':
-    logging.info('Login Failure.')
+    logging.error('Login Failure.')
     logging.debug('%s alert content : %s', _ISP, LOGIN_STATUS)
     sys.exit()
 else:
@@ -147,9 +181,9 @@ SERVICES_STATUS = SERVICES_SOUP.find(
     'dl', attrs={'class': 'service-dl'}).text.strip()
 
 if 'Active' in SERVICES_STATUS:
-    logging.info('%s service status is Active.', _ISP)
+    logging.debug('%s service status is Active.', _ISP)
 else:
-    logging.info('%s service status is not Active.', _ISP)
+    logging.error('%s service status is not Active.', _ISP)
 
 
 SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
@@ -172,7 +206,7 @@ br.select_form(name='manage_service')
 
 LATEST_PSID_BTN=MODIFY_SERVICE_SOUP.find("button", {"onclick":"showLatest()"})
 if LATEST_PSID_BTN is not None:
-    logging.info('%s available', LATEST_PSID_BTN.text)
+    logging.debug('%s available', LATEST_PSID_BTN.text)
     LATEST_PSID_URL = f'{MODIFY_SERVICE_URL}&latest=1'
     LATEST_PSID_LINK = Link(
         base_url=SERVICE_BASE_URL,
@@ -188,7 +222,7 @@ if LATEST_PSID_BTN is not None:
         logging.debug('url:%s', br.geturl())
         br.select_form(name='manage_service')
 else:
-    logging.info('No latest psid options')
+    logging.debug('No latest psid options')
 
 _USERID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'userid'}).get('value')
 _C_PSID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'psid'}).get('value')
@@ -204,29 +238,50 @@ _LOCID = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'locid'}).get('value')
 _COAT = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
 _PSID_VALID = False
 
+if _LATEST is True:
+    SPEEDS_TITLE = f'Latest {_ISP} Speeds'
+else:
+    SPEEDS_TITLE = f'{_ISP} Speeds'
+
+SPEEDS_TABLE = get_speeds_table(SPEEDS_TITLE)
 SPEEDS = MODIFY_SERVICE_SOUP.find_all('span', attrs={'data-value': True})
-for speed in SPEEDS:
-    speed_psid = speed.get('data-value')
-    if speed_psid == _C_PSID:
-        speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
-        _C_TIER = speed_name
-logging.info('Your speed psid:%s', _C_PSID)
-logging.info('Your speed tier:%s', _C_TIER)  
+_SPEEDS_DICT = {}
+
 for speed in SPEEDS:
     speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
     speed_psid = speed.get('data-value')
     speed_daily_spend = speed.get('data-plancharge')
-    print(f'psid={speed_psid},name={speed_name},daily_spend={speed_daily_spend}')
+    _SPEEDS_DICT[speed_psid] = {'name': speed_name, 'spend': speed_daily_spend}
+
+for key, values in _SPEEDS_DICT.items():
+    speed_psid = key
+    speed_name = values['name']
+    speed_daily_spend = values['spend']
+    if key == _C_PSID and _LATEST is False:
+        _C_TIER = values['name']
+        speed_psid = f'[bright_green]{speed_psid}[/bright_green]'
+        speed_name = f'[bright_green]{speed_name}[/bright_green]'
+        speed_daily_spend = f'[bright_green]{speed_daily_spend}[/bright_green]'
+    elif key == _C_PSID:
+        _C_TIER = values['name']
+        speed_psid = f'[bright_yellow]{speed_psid}[/bright_yellow]'
+        speed_name = f'[bright_yellow]{speed_name}[/bright_yellow]'
+        speed_daily_spend = f'[bright_yellow]{speed_daily_spend}[/bright_yellow]'
+    SPEEDS_TABLE = add_speeds_table_row(SPEEDS_TABLE,speed_psid,speed_name,speed_daily_spend)
+
+print_table(SPEEDS_TABLE)
 
 if _PSID == '':
     _PSID = input('Please enter psid: ')
 
-for speed in SPEEDS:
-    speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
-    speed_psid = speed.get('data-value')
-    if _PSID == speed_psid:
-        logging.info('Requested psid is valid.')
-        _PSID_VALID = True
+for key in _SPEEDS_DICT:
+    if _PSID == key:
+        if _PSID == _C_PSID and _LATEST is False:
+            logging.error("Requested psid is not valid.")
+            sys.exit()
+        else:
+            logging.debug('Requested psid is valid.')
+            _PSID_VALID = True
 
 if _PSID_VALID is True:
     CONFIRM_SERVICE_BASE_URL = br.geturl()  # pylint: disable=assignment-from-none
@@ -251,7 +306,7 @@ if _PSID_VALID is True:
     logging.debug('url:%s', br.geturl())
     CONFIRM_SERVICE_SOUP = BeautifulSoup(CONFIRM_SERVICE, features='lxml')
 else:
-    logging.info("Requested psid is not valid.")
+    logging.error("Requested psid is not valid.")
     sys.exit()
 
 if _COMMIT is True:
@@ -264,7 +319,7 @@ if _COMMIT is True:
     if 'Change in progress' in CONFIRM_STATUS:
         logging.info('%s status is "Change in progress".', _ISP)
     else:
-        logging.info(
+        logging.error(
             '%s status is not "Change in progress", please check portal.',
             _ISP)
 
