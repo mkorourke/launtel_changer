@@ -165,7 +165,7 @@ if LOGIN_STATUS == 'Sorry incorrect login details':
     logging.debug('%s alert content : %s', _ISP, LOGIN_STATUS)
     sys.exit()
 else:
-    logging.info('Login Successful.')
+    logging.debug('Login Successful.')
 
 COOKIES = br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
 for cookie in COOKIES:
