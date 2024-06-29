@@ -97,9 +97,8 @@ def confirm_service_modification():
         attrs=[
             ('href',
              _confirm_service_url)])
-    _confirm_service = _br.follow_link(_confirm_service_link).read()
+    _br.follow_link(_confirm_service_link).read()
     logging.debug('url:%s', _br.geturl())
-    _confirm_service_soup = BeautifulSoup(_confirm_service, features='lxml')
     if _COMMIT is True:
         _br.select_form(name='confirm_service')
         _confirm = _br.submit().read()
@@ -326,10 +325,12 @@ if args.debug is True:
     print_cookies()
     print_active_service_status()
 
-# A hack for the moment to short-cut post login landing method of finding avcid
-# and userid values to create a URL to mirror the Modify Service JS button
+
+#Make sure we are at the correct starting point
 _br.follow_link(text='Services').read()
 logging.debug('url:%s', _br.geturl())
+# A hack for the moment to short-cut post login landing method of finding avcid
+# and userid values to then create a URL to mirror the Modify Service JS button with Mechanize
 SERVICE_DETAILS_LINK = _br.find_link(  # pylint: disable=assignment-from-none
     text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
