@@ -56,7 +56,9 @@ def logout():
     Logout of Launtel
     """
     if _COMPLETE is True:
-        logging.info('%s speed change script status is complete, signing out.', _ISP)
+        logging.info(
+            '%s speed change script status is complete, signing out.',
+            _ISP)
     else:
         logging.info('%s speed change script status error, signing out.', _ISP)
 
@@ -67,9 +69,9 @@ def logout():
         tag='a',
         attrs=[
             ('href',
-            _SIGNOUT_URL)])
-    br.follow_link(signout_link)
-    logging.debug('url:%s', br.geturl())
+             _SIGNOUT_URL)])
+    _br.follow_link(signout_link)
+    logging.debug('url:%s', _br.geturl())
     sys.exit()
 
 
@@ -77,16 +79,16 @@ def confirm_service_modification():
     """
     Confirm the service modification and submit if confirm is True
     """
-    _confirm_service_base_url = br.geturl()  # pylint: disable=assignment-from-none
+    _confirm_service_base_url = _br.geturl()  # pylint: disable=assignment-from-none
     _confirm_service_url = (f'/confirm_service?userid={_USERID}'
-                           f'&psid={_PSID}&'
-                           f'unpause={_UNPAUSE}&'
-                           f'service_id={_SERVICE_ID}&'
-                           f'upgrade_options={_UPGRADE_OPTIONS}&'
-                           f'discount_code={_DISCOUNT_CODE}&'
-                           f'avcid={_AVCID}&'
-                           f'locid={_LOCID}&'
-                           f'coat={_COAT}')
+                            f'&psid={_PSID}&'
+                            f'unpause={_UNPAUSE}&'
+                            f'service_id={_SERVICE_ID}&'
+                            f'upgrade_options={_UPGRADE_OPTIONS}&'
+                            f'discount_code={_DISCOUNT_CODE}&'
+                            f'avcid={_AVCID}&'
+                            f'locid={_LOCID}&'
+                            f'coat={_COAT}')
     _confirm_service_link = Link(
         base_url=_confirm_service_base_url,
         url=_confirm_service_url,
@@ -95,13 +97,13 @@ def confirm_service_modification():
         attrs=[
             ('href',
              _confirm_service_url)])
-    _confirm_service = br.follow_link(_confirm_service_link).read()
-    logging.debug('url:%s', br.geturl())
+    _confirm_service = _br.follow_link(_confirm_service_link).read()
+    logging.debug('url:%s', _br.geturl())
     _confirm_service_soup = BeautifulSoup(_confirm_service, features='lxml')
     if _COMMIT is True:
-        br.select_form(name='confirm_service')
-        _confirm = br.submit().read()
-        logging.debug('url:%s', br.geturl())
+        _br.select_form(name='confirm_service')
+        _confirm = _br.submit().read()
+        logging.debug('url:%s', _br.geturl())
         _confirm_soup = BeautifulSoup(_confirm, features='lxml')
         _confirm_status = _confirm_soup.find(
             'dl', attrs={'class': 'service-dl'}).text.strip()
@@ -171,18 +173,24 @@ def print_speeds_table():
     _console = Console()
     _console.print(_speeds_table)
 
+
 def get_speeds_dict(_modify_services_soup):
     """
     Get a dict of speeds
     """
-    _speeds = _modify_services_soup.find_all('span', attrs={'data-value': True})
+    _speeds = _modify_services_soup.find_all(
+        'span', attrs={'data-value': True})
     _speeds_dict = {}
 
     for speed in _speeds:
-        speed_name = speed.find('div', attrs={'class': 'col-sm-4'}).text.strip()
+        speed_name = speed.find(
+            'div', attrs={
+                'class': 'col-sm-4'}).text.strip()
         speed_psid = speed.get('data-value')
         speed_daily_spend = speed.get('data-plancharge')
-        _speeds_dict[speed_psid] = {'name': speed_name, 'spend': speed_daily_spend}
+        _speeds_dict[speed_psid] = {
+            'name': speed_name,
+            'spend': speed_daily_spend}
 
     return _speeds_dict
 
@@ -191,8 +199,8 @@ def print_active_service_status():
     """
     Check active service status
     """
-    _services = br.follow_link(text='Services').read()
-    logging.debug('url:%s', br.geturl())
+    _services = _br.follow_link(text='Services').read()
+    logging.debug('url:%s', _br.geturl())
 
     _services_soup = BeautifulSoup(_services, features='lxml')
     _services_status = _services_soup.find(
@@ -206,33 +214,35 @@ def print_active_service_status():
 
 def print_cookies():
     """
-    Print browser session_id cookie
+    Print _browser session_id cookie
     """
-    _cookies = br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
+    _cookies = _br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
     for cookie in _cookies:
         if cookie.name == "session_id":
             _session_id = cookie.value
             logging.debug('%s=%s', cookie.name, _session_id)
 
+
 def get_browser():
     """
-    Create browser and set desired defaults
+    Create _browser and set desired defaults
     """
-    _br = Browser()
-    _br.set_handle_robots(False)   # ignore robots
-    _br.set_handle_refresh(False)  # can sometimes hang without this
-    _br.addheaders = [('User-agent', 'Firefox')]
-    return _br
+    __br = Browser()
+    __br.set_handle_robots(False)   # ignore robots
+    __br.set_handle_refresh(False)  # can sometimes hang without this
+    __br.addheaders = [('User-agent', 'Firefox')]
+    return __br
+
 
 def login():
     """
     Login to Launtel
     """
-    br.open(_LOGIN_URL)
-    br.select_form(id='login-form')
-    br.form['username'] = _USERNAME
-    br.form['password'] = _PASSWORD
-    _login = br.submit().read()  # pylint: disable=assignment-from-none
+    _br.open(_LOGIN_URL)
+    _br.select_form(id='login-form')
+    _br.form['username'] = _USERNAME
+    _br.form['password'] = _PASSWORD
+    _login = _br.submit().read()  # pylint: disable=assignment-from-none
     _login_soup = BeautifulSoup(_login, features='lxml')
     _login_status = _login_soup.find(
         'div', attrs={
@@ -310,7 +320,7 @@ if _USERNAME == '' or _PASSWORD == '':
     logging.error('Quiting, %s username or password not set.', _ISP)
     sys.exit()
 
-br = get_browser()
+_br = get_browser()
 login()
 if args.debug is True:
     print_cookies()
@@ -318,9 +328,9 @@ if args.debug is True:
 
 # A hack for the moment to short-cut post login landing method of finding avcid
 # and userid values to create a URL to mirror the Modify Service JS button
-br.follow_link(text='Services').read()
-logging.debug('url:%s', br.geturl())
-SERVICE_DETAILS_LINK = br.find_link(  # pylint: disable=assignment-from-none
+_br.follow_link(text='Services').read()
+logging.debug('url:%s', _br.geturl())
+SERVICE_DETAILS_LINK = _br.find_link(  # pylint: disable=assignment-from-none
     text='Show Advanced Info')
 SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
 MODIFY_SERVICE_URL = SERVICE_DETAILS_LINK.url.replace(
@@ -332,11 +342,11 @@ MODIFY_SERVICE_LINK = Link(
     tag='a',
     attrs=[
         ('href',
-        MODIFY_SERVICE_URL)])
-MODIFY_SERVICE = br.follow_link(MODIFY_SERVICE_LINK).read()
+         MODIFY_SERVICE_URL)])
+MODIFY_SERVICE = _br.follow_link(MODIFY_SERVICE_LINK).read()
 MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
-logging.debug('url:%s', br.geturl())
-br.select_form(name='manage_service')
+logging.debug('url:%s', _br.geturl())
+_br.select_form(name='manage_service')
 
 # Check if new pricing or plan options exist
 LATEST_PSID_BTN = MODIFY_SERVICE_SOUP.find(
@@ -353,15 +363,15 @@ if LATEST_PSID_BTN is not None:
             ('href',
              LATEST_PSID_URL)])
     if _LATEST is True:
-        MODIFY_SERVICE = br.follow_link(LATEST_PSID_LINK).read()
+        MODIFY_SERVICE = _br.follow_link(LATEST_PSID_LINK).read()
         MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
-        logging.debug('url:%s', br.geturl())
-        br.select_form(name='manage_service')
+        logging.debug('url:%s', _br.geturl())
+        _br.select_form(name='manage_service')
 else:
     logging.debug('No latest psid options')
 
-#Find all the values utilised within Launtels service modification
-#and necessary for next services of validations and script steps
+# Find all the values utilised within Launtels service modification
+# and necessary for next services of validations and script steps
 _USERID = MODIFY_SERVICE_SOUP.find(
     'input', attrs={'name': 'userid'}).get('value')
 _C_PSID = MODIFY_SERVICE_SOUP.find(
@@ -385,7 +395,7 @@ _SPEEDS_DICT = get_speeds_dict(MODIFY_SERVICE_SOUP)
 print_speeds_table()
 
 if _PSID == '':
-   _PSID = input('Please enter psid: ')
+    _PSID = input('Please enter psid: ')
 
 _PSID_VALID = check_psid()
 while _PSID_VALID is False:
