@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Purpose: Module for Launtel Speed Info and Change via CLI
+Purpose: Script for Launtel Speed Info and Change
 """
 import argparse
 import getpass
 import logging
 import sys
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
 from bs4 import BeautifulSoup
 from mechanize import Browser
 from mechanize import Link
@@ -14,14 +16,28 @@ from rich.table import Table
 from rich.console import Console
 
 _USERNAME = ''
-_PASSWORD = ''  # More ideally use a vault or password manager integration
+_PASSWORD = ''
 
 _BASE_URL = 'https://residential.launtel.net.au'
 _LOGIN_URL = f'{_BASE_URL}/login'
 _SIGNOUT_URL = f'{_BASE_URL}/logout_user'
+_MODIFY_SERVICE_URL = f'{_BASE_URL}/service'
 _ISP = "Launtel"
 _COMPLETE = False
 
+_LATEST = False
+_SERVICE_DICT = {}
+_SPEEDS_DICT = {}
+_PSID = ''
+_USERID = ''
+_AVCID = ''
+_C_PSID = ''
+_UNPAUSE = ''
+_SERVICE_ID = ''
+_UPGRADE_OPTIONS = ''
+_DISCOUNT_CODE = ''
+_LOCID  = ''
+_COAT = ''
 
 def get_credentials(prompt):
     """
@@ -63,7 +79,7 @@ def logout():
         logging.info('%s speed change script status error, signing out.', _ISP)
 
     signout_link = Link(
-        base_url=SERVICE_BASE_URL,
+        base_url=_BASE_URL,
         url=_SIGNOUT_URL,
         text='Sign Out',
         tag='a',
@@ -173,11 +189,11 @@ def print_speeds_table():
     _console.print(_speeds_table)
 
 
-def get_speeds_dict(_modify_services_soup):
+def get_speeds_dict(soup):
     """
     Get a dict of speeds
     """
-    _speeds = _modify_services_soup.find_all(
+    _speeds = soup.find_all(
         'span', attrs={'data-value': True})
     _speeds_dict = {}
 
@@ -193,6 +209,42 @@ def get_speeds_dict(_modify_services_soup):
 
     return _speeds_dict
 
+def get_service_dict(soup):
+    """
+    Get a dict of the service
+    """
+    # Find all the values utilised within Launtels service modification
+    # and necessary for next services of validations and script steps
+    _userid = soup.find(
+        'input', attrs={'name': 'userid'}).get('value')
+    _c_psid = soup.find(
+        'input', attrs={'name': 'psid'}).get('value')
+    _unpause = soup.find(
+        'input', attrs={'name': 'unpause'}).get('value')
+    _service_id = soup.find(
+        'input', attrs={
+            'name': 'service_id'}).get('value')
+    _upgrade_options = soup.find(
+        'input', attrs={'name': 'upgrade_options'}).get('value')
+    _discount_code = ''  # /check_discount/0/{_AVCID}/
+    _avcid = soup.find(
+        'input', attrs={'name': 'avcid'}).get('value')
+    _locid = soup.find(
+        'input', attrs={'name': 'locid'}).get('value')
+    _coat = soup.find('input', attrs={'name': 'coat'}).get('value')
+
+    _service_dict = {}
+    _service_dict[_avcid] = {
+        'userid': _userid,
+        'psid': _c_psid,
+        'unpause':_unpause,
+        'service_id': _service_id,
+        'upgrade_options': _upgrade_options,
+        'discount_code': _discount_code,
+        'locid': _locid,
+        'coat': _coat}
+
+    return _service_dict
 
 def print_active_service_status():
     """
@@ -246,7 +298,6 @@ def login():
     _login_status = _login_soup.find(
         'div', attrs={
             'class': 'alert-content'}).text.strip()
-
     if _login_status == 'Sorry incorrect login details':
         logging.error('Login Failure.')
         logging.debug('%s alert content : %s', _ISP, _login_status)
@@ -306,7 +357,6 @@ if args.latest is True:
     _LATEST = True
 else:
     logging.debug('Use latest psid options is False.')
-    _LATEST = False
 
 # if not set, get the users credentials
 if _USERNAME == '' or _PASSWORD == '':
@@ -329,70 +379,55 @@ if args.debug is True:
 #Make sure we are at the correct starting point
 _br.follow_link(text='Services').read()
 logging.debug('url:%s', _br.geturl())
-# A hack for the moment to short-cut post login landing method of finding avcid
-# and userid values to then create a URL to mirror the Modify Service JS button with Mechanize
-SERVICE_DETAILS_LINK = _br.find_link(  # pylint: disable=assignment-from-none
-    text='Show Advanced Info')
-SERVICE_BASE_URL = SERVICE_DETAILS_LINK.base_url
-MODIFY_SERVICE_URL = SERVICE_DETAILS_LINK.url.replace(
-    'service_details', 'service')
-MODIFY_SERVICE_LINK = Link(
-    base_url=SERVICE_BASE_URL,
-    url=MODIFY_SERVICE_URL,
+parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
+_USERID = parse_qs(parsed_url.query)['userid'][0]
+_AVCID = parse_qs(parsed_url.query)['avcid'][0]
+_MODIFY_SERVICE_URL = f'{_MODIFY_SERVICE_URL}?avcid={_AVCID}&userid={_USERID}'
+_MODIFY_SERVICE_LINK = Link(
+    base_url=_BASE_URL,
+    url=_MODIFY_SERVICE_URL,
     text='Modify Service',
     tag='a',
     attrs=[
         ('href',
-         MODIFY_SERVICE_URL)])
-MODIFY_SERVICE = _br.follow_link(MODIFY_SERVICE_LINK).read()
-MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
+         _MODIFY_SERVICE_URL)])
+_soup = BeautifulSoup(_br.follow_link(_MODIFY_SERVICE_LINK).read(), features='lxml')
 logging.debug('url:%s', _br.geturl())
 _br.select_form(name='manage_service')
 
 # Check if new pricing or plan options exist
-LATEST_PSID_BTN = MODIFY_SERVICE_SOUP.find(
+_LATEST_PSID_BTN = _soup.find(
     "button", {"onclick": "showLatest()"})
-if LATEST_PSID_BTN is not None:
-    logging.debug('%s available', LATEST_PSID_BTN.text)
-    LATEST_PSID_URL = f'{MODIFY_SERVICE_URL}&latest=1'
-    LATEST_PSID_LINK = Link(
-        base_url=SERVICE_BASE_URL,
-        url=LATEST_PSID_URL,
+if _LATEST_PSID_BTN is not None:
+    logging.debug('%s available', _LATEST_PSID_BTN.text)
+    _LATEST_PSID_URL = f'{_MODIFY_SERVICE_URL}&latest=1'
+    _LATEST_PSID_LINK = Link(
+        base_url=_BASE_URL,
+        url=_LATEST_PSID_URL,
         text='Show Latest Pricing Options',
         tag='a',
         attrs=[
             ('href',
-             LATEST_PSID_URL)])
+             _LATEST_PSID_URL)])
     if _LATEST is True:
-        MODIFY_SERVICE = _br.follow_link(LATEST_PSID_LINK).read()
-        MODIFY_SERVICE_SOUP = BeautifulSoup(MODIFY_SERVICE, features='lxml')
+        _soup = BeautifulSoup(_br.follow_link(_LATEST_PSID_LINK).read(), features='lxml')
         logging.debug('url:%s', _br.geturl())
         _br.select_form(name='manage_service')
 else:
     logging.debug('No latest psid options')
 
-# Find all the values utilised within Launtels service modification
-# and necessary for next services of validations and script steps
-_USERID = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={'name': 'userid'}).get('value')
-_C_PSID = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={'name': 'psid'}).get('value')
-_UNPAUSE = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={'name': 'unpause'}).get('value')
-_SERVICE_ID = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={
-        'name': 'service_id'}).get('value')
-_UPGRADE_OPTIONS = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={'name': 'upgrade_options'}).get('value')
-_DISCOUNT_CODE = ''  # /check_discount/0/{_AVCID}/
-_AVCID = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={'name': 'avcid'}).get('value')
-_LOCID = MODIFY_SERVICE_SOUP.find(
-    'input', attrs={'name': 'locid'}).get('value')
-_COAT = MODIFY_SERVICE_SOUP.find('input', attrs={'name': 'coat'}).get('value')
-
+# Get a dict with all the service information
+_SERVICE_DICT = get_service_dict(_soup)
+# Set the remaining required variables
+_C_PSID = _SERVICE_DICT[_AVCID]['psid']
+_UNPAUSE = _SERVICE_DICT[_AVCID]['unpause']
+_SERVICE_ID = _SERVICE_DICT[_AVCID]['service_id']
+_UPGRADE_OPTIONS = _SERVICE_DICT[_AVCID]['upgrade_options']
+_DISCOUNT_CODE = _SERVICE_DICT[_AVCID]['discount_code']
+_LOCID  = _SERVICE_DICT[_AVCID]['locid']
+_COAT = _SERVICE_DICT[_AVCID]['coat']
 # Get speeds and print
-_SPEEDS_DICT = get_speeds_dict(MODIFY_SERVICE_SOUP)
+_SPEEDS_DICT = get_speeds_dict(_soup)
 print_speeds_table()
 
 if _PSID == '':
