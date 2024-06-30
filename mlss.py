@@ -123,8 +123,7 @@ def login():
     _br.select_form(id='login-form')
     _br.form['username'] = _USERNAME
     _br.form['password'] = _PASSWORD
-    _login = _br.submit().read()  # pylint: disable=assignment-from-none
-    _login_soup = BeautifulSoup(_login, features='lxml')
+    _login_soup = BeautifulSoup(_br.submit().read(), features='lxml')
     _login_status = _login_soup.find(
         'div', attrs={
             'class': 'alert-content'}).text.strip()
@@ -132,9 +131,8 @@ def login():
         logging.error('Login Failure.')
         logging.debug('%s alert content : %s', _ISP, _login_status)
         sys.exit()
-    else:
-        logging.debug('Login Successful.')
-        return True
+    logging.debug('Login Successful.')
+    return True
 
 
 def check_latest(_latest_psid_btn):
@@ -169,13 +167,12 @@ def submit_service_modification():
         attrs=[
             ('href',
              _confirm_service_url)])
-    _br.follow_link(_confirm_service_link).read()
+    _br.follow_link(_confirm_service_link)
     logging.debug('url:%s', _br.geturl())
     if _COMMIT is True:
         _br.select_form(name='confirm_service')
-        _confirm = _br.submit().read()
+        _confirm_soup = BeautifulSoup(_br.submit().read(), features='lxml')
         logging.debug('url:%s', _br.geturl())
-        _confirm_soup = BeautifulSoup(_confirm, features='lxml')
         _confirm_status = _confirm_soup.find(
             'dl', attrs={'class': 'service-dl'}).text.strip()
         if 'Change in progress' in _confirm_status:
@@ -308,10 +305,8 @@ def print_active_service_status():
     """
     Check active service status
     """
-    _services = _br.follow_link(text='Services').read()
+    _services_soup = BeautifulSoup(_br.follow_link(text='Services').read(), features='lxml')
     logging.debug('url:%s', _br.geturl())
-
-    _services_soup = BeautifulSoup(_services, features='lxml')
     _services_status = _services_soup.find(
         'dl', attrs={'class': 'service-dl'}).text.strip()
 
@@ -400,7 +395,7 @@ if args.debug is True:
     print_cookies()
     print_active_service_status()
 # Make sure we are at the correct starting point
-_br.follow_link(text='Services').read()
+_br.follow_link(text='Services')
 logging.debug('url:%s', _br.geturl())
 parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
 _USERID = parse_qs(parsed_url.query)['userid'][0]
