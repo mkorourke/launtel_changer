@@ -155,7 +155,6 @@ def confirm_service_modification():
     """
     Confirm the service modification and submit if confirm is True
     """
-    _confirm_service_base_url = _br.geturl()  # pylint: disable=assignment-from-none
     _confirm_service_url = (f'/confirm_service?userid={_USERID}'
                             f'&psid={_PSID}&'
                             f'unpause={_UNPAUSE}&'
@@ -166,7 +165,7 @@ def confirm_service_modification():
                             f'locid={_LOCID}&'
                             f'coat={_COAT}')
     _confirm_service_link = Link(
-        base_url=_confirm_service_base_url,
+        base_url=_br.geturl(),
         url=_confirm_service_url,
         text='Looks great - update it!',
         tag='a',
