@@ -44,6 +44,7 @@ _DISCOUNT_CODE = ''
 _LOCID = ''
 _COAT = ''
 
+
 def signal_handler(sig, frame):
     """
     Capture Ctrl+C and logout if login was successful
