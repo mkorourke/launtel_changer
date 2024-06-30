@@ -89,11 +89,11 @@ def get_browser():
     """
     Create _browser and set desired defaults
     """
-    __br = Browser()
-    __br.set_handle_robots(False)   # ignore robots
-    __br.set_handle_refresh(False)  # can sometimes hang without this
-    __br.addheaders = [('User-agent', 'Firefox')]
-    return __br
+    browser = Browser()
+    browser.set_handle_robots(False)   # ignore robots
+    browser.set_handle_refresh(False)  # can sometimes hang without this
+    browser.addheaders = [('User-agent', 'Firefox')]
+    return browser
 
 
 def logout():
@@ -103,16 +103,14 @@ def logout():
     logging.info(
         '%s speed change complete status is %s, signing out.',
         _ISP, _COMPLETE)
-
-    signout_link = Link(
+    _br.follow_link(Link(
         base_url=_BASE_URL,
         url=_SIGNOUT_URL,
         text='Sign Out',
         tag='a',
         attrs=[
             ('href',
-             _SIGNOUT_URL)])
-    _br.follow_link(signout_link)
+             _SIGNOUT_URL)]))
     logging.debug('url:%s', _br.geturl())
     sys.exit()
 
@@ -164,7 +162,7 @@ def submit_service_modification():
                             f'locid={_LOCID}&'
                             f'coat={_COAT}')
     _confirm_service_link = Link(
-        base_url=_br.geturl(),
+        base_url=_BASE_URL,
         url=_confirm_service_url,
         text='Looks great - update it!',
         tag='a',
@@ -408,16 +406,15 @@ parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
 _USERID = parse_qs(parsed_url.query)['userid'][0]
 _AVCID = parse_qs(parsed_url.query)['avcid'][0]
 _MODIFY_SERVICE_URL = f'{_MODIFY_SERVICE_URL}?avcid={_AVCID}&userid={_USERID}'
-_MODIFY_SERVICE_LINK = Link(
-    base_url=_BASE_URL,
-    url=_MODIFY_SERVICE_URL,
-    text='Modify Service',
-    tag='a',
-    attrs=[
-        ('href',
-         _MODIFY_SERVICE_URL)])
 _soup = BeautifulSoup(
-    _br.follow_link(_MODIFY_SERVICE_LINK).read(),
+    _br.follow_link(Link(
+        base_url=_BASE_URL,
+        url=_MODIFY_SERVICE_URL,
+        text='Modify Service',
+        tag='a',
+        attrs=[
+            ('href',
+             _MODIFY_SERVICE_URL)])).read(),
     features='lxml')
 logging.debug('url:%s', _br.geturl())
 _br.select_form(name='manage_service')
@@ -428,16 +425,15 @@ if _LATEST is True and check_latest(
         "button", {
             "onclick": "showLatest()"})) is True:
     _LATEST_PSID_URL = f'{_MODIFY_SERVICE_URL}&latest=1'
-    _LATEST_PSID_LINK = Link(
-        base_url=_BASE_URL,
-        url=_LATEST_PSID_URL,
-        text='Show Latest Pricing Options',
-        tag='a',
-        attrs=[
-            ('href',
-             _LATEST_PSID_URL)])
     _soup = BeautifulSoup(
-        _br.follow_link(_LATEST_PSID_LINK).read(),
+        _br.follow_link(Link(
+            base_url=_BASE_URL,
+            url=_LATEST_PSID_URL,
+            text='Show Latest Pricing Options',
+            tag='a',
+            attrs=[
+                ('href',
+                 _LATEST_PSID_URL)])).read(),
         features='lxml')
     logging.debug('url:%s', _br.geturl())
     _br.select_form(name='manage_service')
