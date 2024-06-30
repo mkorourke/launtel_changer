@@ -7,8 +7,10 @@ import getpass
 import logging
 import sys
 import signal
+import os
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from mechanize import Browser
 from mechanize import Link
@@ -381,7 +383,13 @@ if args.latest is True:
 else:
     logging.debug('Use latest psid options is False.')
 
-# if not set, get the users credentials
+# Load variables from .env file
+load_dotenv()
+# Check and utilise ENV variables for user credentials
+_USERNAME = os.getenv("LAUNTEL_USERNAME")
+_PASSWORD = os.getenv("LAUNTEL_PASSWORD")
+
+# if ENV not set, interactivly prompt for user credentials
 if _USERNAME == '' or _PASSWORD == '':
     logging.debug('%s username or password not set.', _ISP)
     _isp_credentials = get_credentials(f'Enter your {_ISP} credentials:')
@@ -450,9 +458,14 @@ _COAT = _SERVICE_DICT[_AVCID]['coat']
 _SPEEDS_DICT = get_speeds_dict(_soup)
 print_speeds_table()
 
+# check and cater for non-interactive eg. cron based entry of PSID
 if _PSID != '':
     _PSID_VALID = check_psid()
+    # if non-interactive PSID is false, logout
+    if _PSID_VALID is False:
+        logout()
 
+# check and cater for interactive entry of PSID, re-prompt if PSID is invalid
 while _PSID_VALID is False:
     _PSID = input('Please enter psid: ')
     _PSID_VALID = check_psid()

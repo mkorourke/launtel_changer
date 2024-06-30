@@ -1,4 +1,5 @@
 mechanize
 bs4
 lxml
-richß
+rich
+python-dotenv
