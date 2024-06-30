@@ -305,7 +305,10 @@ def print_active_service_status():
     """
     Check active service status
     """
-    _services_soup = BeautifulSoup(_br.follow_link(text='Services').read(), features='lxml')
+    _services_soup = BeautifulSoup(
+        _br.follow_link(
+            text='Services').read(),
+        features='lxml')
     logging.debug('url:%s', _br.geturl())
     _services_status = _services_soup.find(
         'dl', attrs={'class': 'service-dl'}).text.strip()
