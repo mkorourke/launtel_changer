@@ -6,6 +6,7 @@ import argparse
 import getpass
 import logging
 import sys
+import signal
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
 from bs4 import BeautifulSoup
@@ -23,12 +24,16 @@ _LOGIN_URL = f'{_BASE_URL}/login'
 _SIGNOUT_URL = f'{_BASE_URL}/logout_user'
 _MODIFY_SERVICE_URL = f'{_BASE_URL}/service'
 _ISP = "Launtel"
+_LOGIN_SUCCESSFUL = False
 _COMPLETE = False
 
+_COMMIT = False
 _LATEST = False
+_PSID_VALID = False
+_PSID = ''
+
 _SERVICE_DICT = {}
 _SPEEDS_DICT = {}
-_PSID = ''
 _USERID = ''
 _AVCID = ''
 _C_PSID = ''
@@ -36,8 +41,20 @@ _UNPAUSE = ''
 _SERVICE_ID = ''
 _UPGRADE_OPTIONS = ''
 _DISCOUNT_CODE = ''
-_LOCID  = ''
+_LOCID = ''
 _COAT = ''
+
+def signal_handler(sig, frame):
+    """
+    Capture Ctrl+C and logout if login was successful
+    """
+    logging.debug('Signal captured: sig: %s frame: %s', sig, frame)
+    print('\nYou pressed Ctrl-C, Quiting.')
+    if _LOGIN_SUCCESSFUL:
+        logout()
+    else:
+        sys.exit(0)
+
 
 def get_credentials(prompt):
     """
@@ -67,16 +84,24 @@ def get_credentials(prompt):
     return [username, password]
 
 
+def get_browser():
+    """
+    Create _browser and set desired defaults
+    """
+    __br = Browser()
+    __br.set_handle_robots(False)   # ignore robots
+    __br.set_handle_refresh(False)  # can sometimes hang without this
+    __br.addheaders = [('User-agent', 'Firefox')]
+    return __br
+
+
 def logout():
     """
     Logout of Launtel
     """
-    if _COMPLETE is True:
-        logging.info(
-            '%s speed change script status is complete, signing out.',
-            _ISP)
-    else:
-        logging.info('%s speed change script status error, signing out.', _ISP)
+    logging.info(
+        '%s speed change complete status is %s, signing out.',
+        _ISP, _COMPLETE)
 
     signout_link = Link(
         base_url=_BASE_URL,
@@ -89,6 +114,40 @@ def logout():
     _br.follow_link(signout_link)
     logging.debug('url:%s', _br.geturl())
     sys.exit()
+
+
+def login():
+    """
+    Login to Launtel
+    """
+    _br.open(_LOGIN_URL)
+    _br.select_form(id='login-form')
+    _br.form['username'] = _USERNAME
+    _br.form['password'] = _PASSWORD
+    _login = _br.submit().read()  # pylint: disable=assignment-from-none
+    _login_soup = BeautifulSoup(_login, features='lxml')
+    _login_status = _login_soup.find(
+        'div', attrs={
+            'class': 'alert-content'}).text.strip()
+    if _login_status == 'Sorry incorrect login details':
+        logging.error('Login Failure.')
+        logging.debug('%s alert content : %s', _ISP, _login_status)
+        sys.exit()
+    else:
+        logging.debug('Login Successful.')
+        return True
+
+
+def check_latest(_latest_psid_btn):
+    """
+    Check latest pricing options exist
+    """
+    if _latest_psid_btn is not None:
+        logging.debug('%s available', _latest_psid_btn.text)
+        return True
+    else:
+        logging.debug('No latest psid options')
+    return False
 
 
 def confirm_service_modification():
@@ -209,6 +268,7 @@ def get_speeds_dict(soup):
 
     return _speeds_dict
 
+
 def get_service_dict(soup):
     """
     Get a dict of the service
@@ -237,7 +297,7 @@ def get_service_dict(soup):
     _service_dict[_avcid] = {
         'userid': _userid,
         'psid': _c_psid,
-        'unpause':_unpause,
+        'unpause': _unpause,
         'service_id': _service_id,
         'upgrade_options': _upgrade_options,
         'discount_code': _discount_code,
@@ -245,6 +305,7 @@ def get_service_dict(soup):
         'coat': _coat}
 
     return _service_dict
+
 
 def print_active_service_status():
     """
@@ -274,37 +335,7 @@ def print_cookies():
             logging.debug('%s=%s', cookie.name, _session_id)
 
 
-def get_browser():
-    """
-    Create _browser and set desired defaults
-    """
-    __br = Browser()
-    __br.set_handle_robots(False)   # ignore robots
-    __br.set_handle_refresh(False)  # can sometimes hang without this
-    __br.addheaders = [('User-agent', 'Firefox')]
-    return __br
-
-
-def login():
-    """
-    Login to Launtel
-    """
-    _br.open(_LOGIN_URL)
-    _br.select_form(id='login-form')
-    _br.form['username'] = _USERNAME
-    _br.form['password'] = _PASSWORD
-    _login = _br.submit().read()  # pylint: disable=assignment-from-none
-    _login_soup = BeautifulSoup(_login, features='lxml')
-    _login_status = _login_soup.find(
-        'div', attrs={
-            'class': 'alert-content'}).text.strip()
-    if _login_status == 'Sorry incorrect login details':
-        logging.error('Login Failure.')
-        logging.debug('%s alert content : %s', _ISP, _login_status)
-        sys.exit()
-    else:
-        logging.debug('Login Successful.')
-
+signal.signal(signal.SIGINT, signal_handler)
 
 parser = argparse.ArgumentParser(
     description='Launtel Speed Info and Change CLI')
@@ -340,8 +371,6 @@ else:
 # get the arguments value for psid
 if args.psid is not None:
     _PSID = args.psid
-else:
-    _PSID = ''
 
 # get the arguments value for commit
 if args.commit is True:
@@ -349,7 +378,6 @@ if args.commit is True:
     _COMMIT = True
 else:
     logging.debug('Commit is False.')
-    _COMMIT = False
 
 # get the arguments value for commit
 if args.latest is True:
@@ -370,13 +398,11 @@ if _USERNAME == '' or _PASSWORD == '':
     sys.exit()
 
 _br = get_browser()
-login()
+_LOGIN_SUCCESSFUL = login()
 if args.debug is True:
     print_cookies()
     print_active_service_status()
-
-
-#Make sure we are at the correct starting point
+# Make sure we are at the correct starting point
 _br.follow_link(text='Services').read()
 logging.debug('url:%s', _br.geturl())
 parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
@@ -391,15 +417,17 @@ _MODIFY_SERVICE_LINK = Link(
     attrs=[
         ('href',
          _MODIFY_SERVICE_URL)])
-_soup = BeautifulSoup(_br.follow_link(_MODIFY_SERVICE_LINK).read(), features='lxml')
+_soup = BeautifulSoup(
+    _br.follow_link(_MODIFY_SERVICE_LINK).read(),
+    features='lxml')
 logging.debug('url:%s', _br.geturl())
 _br.select_form(name='manage_service')
 
 # Check if new pricing or plan options exist
-_LATEST_PSID_BTN = _soup.find(
-    "button", {"onclick": "showLatest()"})
-if _LATEST_PSID_BTN is not None:
-    logging.debug('%s available', _LATEST_PSID_BTN.text)
+if _LATEST is True and check_latest(
+    _soup.find(
+        "button", {
+            "onclick": "showLatest()"})) is True:
     _LATEST_PSID_URL = f'{_MODIFY_SERVICE_URL}&latest=1'
     _LATEST_PSID_LINK = Link(
         base_url=_BASE_URL,
@@ -409,12 +437,11 @@ if _LATEST_PSID_BTN is not None:
         attrs=[
             ('href',
              _LATEST_PSID_URL)])
-    if _LATEST is True:
-        _soup = BeautifulSoup(_br.follow_link(_LATEST_PSID_LINK).read(), features='lxml')
-        logging.debug('url:%s', _br.geturl())
-        _br.select_form(name='manage_service')
-else:
-    logging.debug('No latest psid options')
+    _soup = BeautifulSoup(
+        _br.follow_link(_LATEST_PSID_LINK).read(),
+        features='lxml')
+    logging.debug('url:%s', _br.geturl())
+    _br.select_form(name='manage_service')
 
 # Get a dict with all the service information
 _SERVICE_DICT = get_service_dict(_soup)
@@ -424,16 +451,15 @@ _UNPAUSE = _SERVICE_DICT[_AVCID]['unpause']
 _SERVICE_ID = _SERVICE_DICT[_AVCID]['service_id']
 _UPGRADE_OPTIONS = _SERVICE_DICT[_AVCID]['upgrade_options']
 _DISCOUNT_CODE = _SERVICE_DICT[_AVCID]['discount_code']
-_LOCID  = _SERVICE_DICT[_AVCID]['locid']
+_LOCID = _SERVICE_DICT[_AVCID]['locid']
 _COAT = _SERVICE_DICT[_AVCID]['coat']
 # Get speeds and print
 _SPEEDS_DICT = get_speeds_dict(_soup)
 print_speeds_table()
 
-if _PSID == '':
-    _PSID = input('Please enter psid: ')
+if _PSID != '':
+    _PSID_VALID = check_psid()
 
-_PSID_VALID = check_psid()
 while _PSID_VALID is False:
     _PSID = input('Please enter psid: ')
     _PSID_VALID = check_psid()
