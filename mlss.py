@@ -151,9 +151,9 @@ def check_latest(_latest_psid_btn):
     return False
 
 
-def confirm_service_modification():
+def submit_service_modification():
     """
-    Confirm the service modification and submit if confirm is True
+    Prepare the service modification URL and submit modification confirmation if Commit is True
     """
     _confirm_service_url = (f'/confirm_service?userid={_USERID}'
                             f'&psid={_PSID}&'
@@ -465,10 +465,10 @@ while _PSID_VALID is False:
     _PSID_VALID = check_psid()
 
 if _PSID_VALID is True:
-    confirm_service_modification()
+    submit_service_modification()
 else:
     logging.error("Requested psid is not valid.")
     logout()
 
-_COMPLETE = True
+_COMPLETE = True  # If we get to gere Complete is considered True
 logout()
