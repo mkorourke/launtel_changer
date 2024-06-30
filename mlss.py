@@ -146,8 +146,7 @@ def check_latest(_latest_psid_btn):
     if _latest_psid_btn is not None:
         logging.debug('%s available', _latest_psid_btn.text)
         return True
-    else:
-        logging.debug('No latest psid options')
+    logging.debug('No latest psid options')
     return False
 
 
