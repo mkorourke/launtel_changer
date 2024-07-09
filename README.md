@@ -32,6 +32,4 @@ Schedule using -p and .env options with your preferred scheduler.
 > [!Note]
 > Script is tested to support accounts with a single service, extra code would be neccessary to support accounts with multiple services.
 
-["Buy me a Coffee"](https://www.buymeacoffee.com/mkorourke)
-
-["Buy me a coffee on Ko-Fi"](https://ko-fi.com/mkorourke)
+[Buy me a Coffee on BMC](https://www.buymeacoffee.com/mkorourke) [or Ko-Fi](https://ko-fi.com/mkorourke)
