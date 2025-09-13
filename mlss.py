@@ -281,7 +281,7 @@ def get_service_dict(soup):
         'input', attrs={
             'name': 'service_id'}).get('value')
     _upgrade_options = soup.find(
-        'input', attrs={'name': 'upgrade_options'}).get('value')
+        'span', attrs={'class': 'rollover list-group-item'}).get('value')
     _discount_code = ''  # /check_discount/0/{_AVCID}/
     _avcid = soup.find(
         'input', attrs={'name': 'avcid'}).get('value')
