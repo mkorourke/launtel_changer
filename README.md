@@ -41,7 +41,7 @@ The script is a dry-run by default, use the -c option to commit the speed change
 
 Schedule using -p and .env options with your preferred scheduler.
 
-Use 'shape' option to view Launtel shaper information, using the '-c shape' option will commit a shape change. Defaults to 108% down and 95% up.
+Use 'shape' option to view Launtel shaper information, using the '-c shaper' option will commit a shape change. Defaults to 108% down and 95% up.
 Example:
 ````
 ./mlss.py -c shaper --up 108 --down 95
