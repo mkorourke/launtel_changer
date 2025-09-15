@@ -8,6 +8,7 @@ import logging
 import sys
 import signal
 import os
+from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
 from dotenv import load_dotenv
@@ -31,6 +32,7 @@ _COMPLETE = False
 
 _COMMIT = False
 _LATEST = False
+_SHAPER = False
 _PSID_VALID = False
 _PSID = ''
 
@@ -102,9 +104,14 @@ def logout():
     """
     Logout of Launtel
     """
-    logging.info(
-        '%s speed change complete status is %s, signing out.',
-        _ISP, _COMPLETE)
+    if _SHAPER is True:
+        logging.info(
+            '%s shaper change complete status is %s, signing out.',
+            _ISP, _COMPLETE)
+    else:
+        logging.info(
+            '%s speed change complete status is %s, signing out.',
+            _ISP, _COMPLETE)
     _br.follow_link(Link(
         base_url=_BASE_URL,
         url=_SIGNOUT_URL,
@@ -199,6 +206,81 @@ def check_psid():
                 logging.debug('Requested psid is valid.')
                 _psid_valid = True
     return _psid_valid
+
+
+def get_shaper_control(_br):
+    """
+    Get shaper control info
+    """
+    _soup = BeautifulSoup(_br.follow_link(
+        text='Show Advanced Info'), features='lxml')
+    logging.debug('url:%s', _br.geturl())
+    _queue_type = None
+    _shaperdown_control = None
+    _shaperup_control = None
+    _shaperdown_cont = 'override'  # always override to keep this simple
+    _shaperup_cont = 'override'
+    if _soup.find('input', attrs={'name': 'queue_type', 'value': 'shape'}).get('checked') is not None:
+        _queue_type = 'shape'
+    elif _soup.find('input', attrs={'name': 'queue_type', 'value': 'police'}).get('checked') is not None:
+        _queue_type = 'police'
+
+    if _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_none'}).get('checked') is not None:
+        _shaperup_control = 'none'
+    elif _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_default'}).get('checked') is not None:
+        _shaperup_control = 'default'
+    elif _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_override'}).get('checked') is not None:
+        _shaperup_control = 'override'
+
+    if _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_none'}).get('checked') is not None:
+        _shaperdown_control = 'none'
+    elif _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_default'}).get('checked') is not None:
+        _shaperdown_control = 'default'
+    elif _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_override'}).get('checked') is not None:
+        _shaperdown_control = 'override'
+
+    _shaperdown_max = _soup.find(
+        'input', attrs={'id': 'shaperdown_speed'}).get('max')
+    _shaperdown_min = _soup.find(
+        'input', attrs={'id': 'shaperdown_speed'}).get('min')
+    _shaperdown_speed = _soup.find(
+        'input', attrs={'id': 'shaperdown_speed'}).get('value')
+
+    _shaperup_max = _soup.find(
+        'input', attrs={'id': 'shaperup_speed'}).get('max')
+    _shaperup_min = _soup.find(
+        'input', attrs={'id': 'shaperup_speed'}).get('min')
+    _shaperup_speed = _soup.find(
+        'input', attrs={'id': 'shaperup_speed'}).get('value')
+
+    _shaper_control = [{"key": "queue_type", "value": _queue_type},
+                       {"key": "shaperdown_cont", "value": _shaperdown_cont},
+                       {"key": "shaperdown_control", "value": _shaperdown_control},
+                       {"key": "shaperdown_speed", "value": _shaperdown_speed},
+                       {"key": "shaperup_cont", "value": _shaperup_cont},
+                       {"key": "shaperup_control", "value": _shaperdown_control},
+                       {"key": "shaperup_speed", "value": _shaperup_speed}]
+
+    _shaper_control_url = _soup.find(
+        'form', attrs={'name': 'form-shaping'}).get('action')
+
+    _shaper_dict = {}
+    _shaper_dict = {
+        'queue_type': _queue_type,
+        'shaperdown_cont': _shaperdown_cont,
+        'shaperdown_control': _shaperdown_control,
+        'shaperdown_speed': _shaperdown_speed,
+        'shaperup_cont': _shaperup_cont,
+        'shaperup_control': _shaperup_control,
+        'shaperup_speed': _shaperup_speed,
+        'shaperdown_max': _shaperdown_max,
+        'shaperdown_min': _shaperdown_min,
+        'shaperup_max': _shaperup_max,
+        'shaperup_min': _shaperup_min,
+        'shaper_control_url': _shaper_control_url,
+    }
+
+    return _shaper_dict
 
 
 def get_speeds_table(_title):
@@ -349,6 +431,11 @@ parser.add_argument(
     action='store_true',
     help='Use latest psid options.')
 parser.add_argument(
+    '-s',
+    '--shaper',
+    action='store_true',
+    help='Shaper control.')
+parser.add_argument(
     '-d',
     '--debug',
     action='store_true',
@@ -383,6 +470,13 @@ if args.latest is True:
 else:
     logging.debug('Use latest psid options is False.')
 
+# get the arguments value for commit
+if args.shaper is True:
+    logging.debug('Shaper control is True.')
+    _SHAPER = True
+else:
+    logging.debug('Shaper control is False.')
+
 # Load variables from .env file
 load_dotenv()
 # Check and utilise ENV variables for user credentials
@@ -411,6 +505,38 @@ logging.debug('url:%s', _br.geturl())
 parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
 _USERID = parse_qs(parsed_url.query)['userid'][0]
 _AVCID = parse_qs(parsed_url.query)['avcid'][0]
+
+if _SHAPER is True:
+    _SHAPER_DICT = get_shaper_control(_br)
+    print(f'Queue Type: {_SHAPER_DICT["queue_type"]}')
+    print(f'Down Control: {_SHAPER_DICT["shaperdown_control"]}')
+    print(
+        f'Down Speed: Max: {_SHAPER_DICT["shaperdown_max"]} Min: {_SHAPER_DICT["shaperdown_min"]} Value: {_SHAPER_DICT["shaperdown_speed"]}')
+    print(f'Up Control: {_SHAPER_DICT["shaperup_control"]}')
+    print(
+        f'Up Speed: Max: {_SHAPER_DICT["shaperup_max"]} Min: {_SHAPER_DICT["shaperup_min"]} Value: {_SHAPER_DICT["shaperup_speed"]}')
+    _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
+    print(_SHAPER_CONTROL_URL)
+    if _COMMIT is False:
+        _COMPLETE = False
+        logout()
+    if _COMMIT is True:
+        # Define _SHAPER_CONTROL_DATA as a dictionary directly
+        _SHAPER_CONTROL_DICT = {
+            "queue_type": _SHAPER_DICT["queue_type"],
+            "shaperdown_cont": _SHAPER_DICT["shaperdown_cont"],
+            "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
+            "shaperdown_speed": _SHAPER_DICT["shaperdown_max"],
+            "shaperup_cont": _SHAPER_DICT["shaperup_cont"],
+            "shaperup_control": _SHAPER_DICT["shaperup_control"],
+            "shaperup_speed": _SHAPER_DICT["shaperup_max"]
+        }
+        # URL-encode the form data and Post
+        _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
+        _COMPLETE = True  # If we get to here Complete is considered True
+        logout()
+
+
 _MODIFY_SERVICE_URL = f'{_MODIFY_SERVICE_URL}?avcid={_AVCID}&userid={_USERID}'
 _soup = BeautifulSoup(
     _br.follow_link(Link(
@@ -476,5 +602,5 @@ else:
     logging.error("Requested psid is not valid.")
     logout()
 
-_COMPLETE = True  # If we get to gere Complete is considered True
+_COMPLETE = True  # If we get to here Complete is considered True
 logout()

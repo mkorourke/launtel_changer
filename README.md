@@ -16,6 +16,7 @@ options:
   -p PSID, --psid PSID  Launtel Speed PSID
   -c, --commit          Commit to Launtel.
   -l, --latest          Use latest psid options.
+  -s, --shaper          Shaper control.
   -d, --debug           Debug logging to stderr.
 ````
 
@@ -28,6 +29,8 @@ LAUNTEL_USERNAME and LAUNTEL_PASSWORD key-value pairs will be utlised if defined
 The script is a dry-run by default, use the -c option to commit the speed change to Luantel. 
 
 Schedule using -p and .env options with your preferred scheduler.
+
+Use -s option to view Launtel shaper information, using the -c option will set maximum allowed values. Additional flags to be added for additional control.
 
 > [!Note]
 > Script is tested to support accounts with a single service, extra code would be neccessary to support accounts with multiple services.
