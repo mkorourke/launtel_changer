@@ -96,8 +96,10 @@ def create_parser():
     )
 
     # Add subparser for shaper command
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    parser_shaper = subparsers.add_parser('shaper', help='Shaper control options')
+    subparsers = parser.add_subparsers(
+        dest='command', help='Available commands')
+    parser_shaper = subparsers.add_parser(
+        'shaper', help='Shaper control options')
     parser_shaper.add_argument(
         '--up',
         default=108,
@@ -343,23 +345,28 @@ def get_shaper_table(_title):
     return table
 
 
-def print_shaper_table(_up,_down):
+def print_shaper_table(_up, _down):
     """
     Get the shaper table
     """
     _shaper_title = f'{_ISP} Shaper Control'
     _shaper_table = get_shaper_table(_shaper_title)
     _shaper_table.add_row(*('Queue Type', _SHAPER_DICT["queue_type"]))
-    _shaper_table.add_row(*('Down Control', _SHAPER_DICT["shaperdown_control"]))
+    _shaper_table.add_row(
+        *('Down Control', _SHAPER_DICT["shaperdown_control"]))
     _shaper_table.add_row(*('Down Max', _SHAPER_DICT["shaperdown_max"]))
     _shaper_table.add_row(*('Down Min', _SHAPER_DICT["shaperdown_min"]))
-    _shaper_table.add_row(*('[bright_green]Down Value[/bright_green]',f'[bright_green]{_SHAPER_DICT["shaperdown_speed"]}[/bright_green]'))
-    _shaper_table.add_row(*('[bright_yellow]Down Planned[/bright_yellow]',f'[bright_yellow]{_down}[/bright_yellow]'))
+    _shaper_table.add_row(*('[bright_green]Down Value[/bright_green]',
+                          f'[bright_green]{_SHAPER_DICT["shaperdown_speed"]}[/bright_green]'))
+    _shaper_table.add_row(
+        *('[bright_yellow]Down Planned[/bright_yellow]', f'[bright_yellow]{_down}[/bright_yellow]'))
     _shaper_table.add_row(*('Up Control', _SHAPER_DICT["shaperup_control"]))
     _shaper_table.add_row(*('Up Max', _SHAPER_DICT["shaperup_max"]))
     _shaper_table.add_row(*('Up Min', _SHAPER_DICT["shaperup_min"]))
-    _shaper_table.add_row(*('[bright_green]Up Value[/bright_green]', f'[bright_green]{_SHAPER_DICT["shaperup_speed"]}[/bright_green]'))
-    _shaper_table.add_row(*('[bright_yellow]Up Planned[/bright_yellow]', f'[bright_yellow]{_up}[/bright_yellow]'))
+    _shaper_table.add_row(*('[bright_green]Up Value[/bright_green]',
+                          f'[bright_green]{_SHAPER_DICT["shaperup_speed"]}[/bright_green]'))
+    _shaper_table.add_row(
+        *('[bright_yellow]Up Planned[/bright_yellow]', f'[bright_yellow]{_up}[/bright_yellow]'))
     _console = Console()
     _console.print(_shaper_table)
 
@@ -493,7 +500,8 @@ def print_cookies():
         if cookie.name == "session_id":
             _session_id = cookie.value
             logging.debug('%s=%s', cookie.name, _session_id)
-    
+
+
 signal.signal(signal.SIGINT, signal_handler)
 # parse the arguments
 _parser = create_parser()
@@ -622,7 +630,7 @@ if _SHAPER is True:
             _shaperdown_cont = int(int(_speed_plan[0]) * (_UP/100))
             _shaperup_cont = int(int(_speed_plan[1]) * (_DOWN/100))
     _SHAPER_DICT = get_shaper_control(_br)
-    if int(_SHAPER_DICT["shaperup_min"]) <=_shaperup_cont <= int(_SHAPER_DICT["shaperup_max"]):
+    if int(_SHAPER_DICT["shaperup_min"]) <= _shaperup_cont <= int(_SHAPER_DICT["shaperup_max"]):
         logging.debug('Up Planned %s is valid.', _shaperup_cont)
     else:
         logging.error('Up Planned %s is not valid.', _shaperup_cont)
@@ -634,7 +642,7 @@ if _SHAPER is True:
         logging.error('Down Planned %s is not valid.', _shaperdown_cont)
         _COMPLETE = False
         logout()
-    print_shaper_table(_shaperup_cont,_shaperdown_cont)
+    print_shaper_table(_shaperup_cont, _shaperdown_cont)
     _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
     if _COMMIT is True:
         # Define _SHAPER_CONTROL_DATA as a dictionary directly
