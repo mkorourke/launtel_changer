@@ -11,13 +11,24 @@ usage: mlss.py [-h] [-p PSID] [-c] [-l] [-d]
 
 Launtel Speed Info and Change CLI
 
+positional arguments:
+  {shaper}              Available commands
+    shaper              Shaper control options
+
 options:
   -h, --help            show this help message and exit
   -p PSID, --psid PSID  Launtel Speed PSID
   -c, --commit          Commit to Launtel.
   -l, --latest          Use latest psid options.
-  -s, --shaper          Shaper control.
   -d, --debug           Debug logging to stderr.
+
+$ ./mlss.py shaper --help
+usage: mlss.py shaper [-h] [--up UP] [--down DOWN]
+
+options:
+  -h, --help   show this help message and exit
+  --up UP      Shaper upload, percentage of plan speed.
+  --down DOWN  Shaper download, percentage of plan speed.
 ````
 
 Optional: Configure variables _USERNAME and or _PASSWORD with your Launtel login details, if not configured the script will interactively prompt for username or password which ever is not set. 
@@ -30,7 +41,11 @@ The script is a dry-run by default, use the -c option to commit the speed change
 
 Schedule using -p and .env options with your preferred scheduler.
 
-Use -s option to view Launtel shaper information, using the -c option will set maximum allowed values. Additional flags to be added for additional control.
+Use 'shape' option to view Launtel shaper information, using the '-c shape' option will commit a shape change. Defaults to 108% down and 95% up.
+Example:
+````
+./mlss.py -c shaper --up 108 --down 95
+```
 
 > [!Note]
 > Script is tested to support accounts with a single service, extra code would be neccessary to support accounts with multiple services.

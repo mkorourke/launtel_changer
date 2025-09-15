@@ -8,6 +8,7 @@ import logging
 import sys
 import signal
 import os
+import re
 from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
@@ -35,7 +36,10 @@ _LATEST = False
 _SHAPER = False
 _PSID_VALID = False
 _PSID = ''
+_UP = ''
+_DOWN = ''
 
+_SHAPER_DICT = {}
 _SERVICE_DICT = {}
 _SPEEDS_DICT = {}
 _USERID = ''
@@ -59,6 +63,55 @@ def signal_handler(sig, frame):
         logout()
     else:
         sys.exit(0)
+
+
+def create_parser():
+    """
+    Arg Parser
+    """
+    parser = argparse.ArgumentParser(
+        description='Launtel Speed Info and Change CLI',
+        add_help=True
+    )
+
+    # Add main arguments
+    parser.add_argument('-p', '--psid', help='Launtel Speed PSID')
+    parser.add_argument(
+        '-c',
+        '--commit',
+        action='store_true',
+        help=f'Commit to {_ISP}.'
+    )
+    parser.add_argument(
+        '-l',
+        '--latest',
+        action='store_true',
+        help='Use latest PSID options'
+    )
+    parser.add_argument(
+        '-d',
+        '--debug',
+        action='store_true',
+        help='Debug logging to stderr'
+    )
+
+    # Add subparser for shaper command
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    parser_shaper = subparsers.add_parser('shaper', help='Shaper control options')
+    parser_shaper.add_argument(
+        '--up',
+        default=108,
+        type=int,
+        help='Shaper upload, percentage of plan speed.'
+    )
+    parser_shaper.add_argument(
+        '--down',
+        default=95,
+        type=int,
+        help='Shaper download, percentage of plan speed.'
+    )
+
+    return parser
 
 
 def get_credentials(prompt):
@@ -253,14 +306,6 @@ def get_shaper_control(_br):
     _shaperup_speed = _soup.find(
         'input', attrs={'id': 'shaperup_speed'}).get('value')
 
-    _shaper_control = [{"key": "queue_type", "value": _queue_type},
-                       {"key": "shaperdown_cont", "value": _shaperdown_cont},
-                       {"key": "shaperdown_control", "value": _shaperdown_control},
-                       {"key": "shaperdown_speed", "value": _shaperdown_speed},
-                       {"key": "shaperup_cont", "value": _shaperup_cont},
-                       {"key": "shaperup_control", "value": _shaperdown_control},
-                       {"key": "shaperup_speed", "value": _shaperup_speed}]
-
     _shaper_control_url = _soup.find(
         'form', attrs={'name': 'form-shaping'}).get('action')
 
@@ -281,6 +326,42 @@ def get_shaper_control(_br):
     }
 
     return _shaper_dict
+
+
+def get_shaper_table(_title):
+    """
+    Create a new shaper table
+    """
+    table = Table(
+        show_header=True,
+        header_style='bold magenta',
+        title=_title,
+        box=box.SQUARE,
+        show_lines=True)
+    table.add_column('Name')
+    table.add_column('Value')
+    return table
+
+
+def print_shaper_table(_up,_down):
+    """
+    Get the shaper table
+    """
+    _shaper_title = f'{_ISP} Shaper Control'
+    _shaper_table = get_shaper_table(_shaper_title)
+    _shaper_table.add_row(*('Queue Type', _SHAPER_DICT["queue_type"]))
+    _shaper_table.add_row(*('Down Control', _SHAPER_DICT["shaperdown_control"]))
+    _shaper_table.add_row(*('Down Max', _SHAPER_DICT["shaperdown_max"]))
+    _shaper_table.add_row(*('Down Min', _SHAPER_DICT["shaperdown_min"]))
+    _shaper_table.add_row(*('[bright_green]Down Value[/bright_green]',f'[bright_green]{_SHAPER_DICT["shaperdown_speed"]}[/bright_green]'))
+    _shaper_table.add_row(*('[bright_yellow]Down Planned[/bright_yellow]',f'[bright_yellow]{_down}[/bright_yellow]'))
+    _shaper_table.add_row(*('Up Control', _SHAPER_DICT["shaperup_control"]))
+    _shaper_table.add_row(*('Up Max', _SHAPER_DICT["shaperup_max"]))
+    _shaper_table.add_row(*('Up Min', _SHAPER_DICT["shaperup_min"]))
+    _shaper_table.add_row(*('[bright_green]Up Value[/bright_green]', f'[bright_green]{_SHAPER_DICT["shaperup_speed"]}[/bright_green]'))
+    _shaper_table.add_row(*('[bright_yellow]Up Planned[/bright_yellow]', f'[bright_yellow]{_up}[/bright_yellow]'))
+    _console = Console()
+    _console.print(_shaper_table)
 
 
 def get_speeds_table(_title):
@@ -308,19 +389,19 @@ def print_speeds_table():
     else:
         _speeds_title = f'{_ISP} Speeds'
     _speeds_table = get_speeds_table(_speeds_title)
-    for _key, values in _SPEEDS_DICT.items():
-        speed_psid = _key
-        speed_name = values['name']
-        speed_daily_spend = values['spend']
+    for _key, _values in _SPEEDS_DICT.items():
+        _speed_psid = _key
+        _speed_name = _values['name']
+        _speed_daily_spend = _values['spend']
         if _key == _C_PSID and _LATEST is False:
-            speed_psid = f'[bright_green]{speed_psid}[/bright_green]'
-            speed_name = f'[bright_green]{speed_name}[/bright_green]'
-            speed_daily_spend = f'[bright_green]{speed_daily_spend}[/bright_green]'
+            _speed_psid = f'[bright_green]{_speed_psid}[/bright_green]'
+            _speed_name = f'[bright_green]{_speed_name}[/bright_green]'
+            _speed_daily_spend = f'[bright_green]{_speed_daily_spend}[/bright_green]'
         elif _key == _C_PSID:
-            speed_psid = f'[bright_yellow]{speed_psid}[/bright_yellow]'
-            speed_name = f'[bright_yellow]{speed_name}[/bright_yellow]'
-            speed_daily_spend = f'[bright_yellow]{speed_daily_spend}[/bright_yellow]'
-        _speeds_table.add_row(*(speed_psid, speed_name, speed_daily_spend))
+            _speed_name = f'[bright_yellow]{_speed_name}[/bright_yellow]'
+            _speed_name = f'[bright_yellow]{_speed_name}[/bright_yellow]'
+            _speed_daily_spend = f'[bright_yellow]{_speed_daily_spend}[/bright_yellow]'
+        _speeds_table.add_row(*(_speed_name, _speed_name, _speed_daily_spend))
 
     _console = Console()
     _console.print(_speeds_table)
@@ -335,14 +416,14 @@ def get_speeds_dict(soup):
     _speeds_dict = {}
 
     for speed in _speeds:
-        speed_name = speed.find(
+        _speed_name = speed.find(
             'div', attrs={
                 'class': 'col-sm-4'}).text.strip()
-        speed_psid = speed.get('data-value')
-        speed_daily_spend = speed.get('data-plancharge')
-        _speeds_dict[speed_psid] = {
-            'name': speed_name,
-            'spend': speed_daily_spend}
+        _speed_psid = speed.get('data-value')
+        _speed_daily_spend = speed.get('data-plancharge')
+        _speeds_dict[_speed_psid] = {
+            'name': _speed_name,
+            'spend': _speed_daily_spend}
 
     return _speeds_dict
 
@@ -412,37 +493,11 @@ def print_cookies():
         if cookie.name == "session_id":
             _session_id = cookie.value
             logging.debug('%s=%s', cookie.name, _session_id)
-
-
+    
 signal.signal(signal.SIGINT, signal_handler)
-
-parser = argparse.ArgumentParser(
-    description='Launtel Speed Info and Change CLI')
-# add arguments to the parser
-parser.add_argument('-p', '--psid', help='Launtel Speed PSID')
-parser.add_argument(
-    '-c',
-    '--commit',
-    action='store_true',
-    help=f'Commit to {_ISP}.')
-parser.add_argument(
-    '-l',
-    '--latest',
-    action='store_true',
-    help='Use latest psid options.')
-parser.add_argument(
-    '-s',
-    '--shaper',
-    action='store_true',
-    help='Shaper control.')
-parser.add_argument(
-    '-d',
-    '--debug',
-    action='store_true',
-    help='Debug logging to stderr.')
-
 # parse the arguments
-args = parser.parse_args()
+_parser = create_parser()
+args = _parser.parse_args()
 
 if args.debug is True:
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -471,11 +526,14 @@ else:
     logging.debug('Use latest psid options is False.')
 
 # get the arguments value for commit
-if args.shaper is True:
+if args.command == 'shaper':
     logging.debug('Shaper control is True.')
     _SHAPER = True
+    _UP = int(args.up)
+    _DOWN = int(args.down)
 else:
     logging.debug('Shaper control is False.')
+
 
 # Load variables from .env file
 load_dotenv()
@@ -505,38 +563,6 @@ logging.debug('url:%s', _br.geturl())
 parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
 _USERID = parse_qs(parsed_url.query)['userid'][0]
 _AVCID = parse_qs(parsed_url.query)['avcid'][0]
-
-if _SHAPER is True:
-    _SHAPER_DICT = get_shaper_control(_br)
-    print(f'Queue Type: {_SHAPER_DICT["queue_type"]}')
-    print(f'Down Control: {_SHAPER_DICT["shaperdown_control"]}')
-    print(
-        f'Down Speed: Max: {_SHAPER_DICT["shaperdown_max"]} Min: {_SHAPER_DICT["shaperdown_min"]} Value: {_SHAPER_DICT["shaperdown_speed"]}')
-    print(f'Up Control: {_SHAPER_DICT["shaperup_control"]}')
-    print(
-        f'Up Speed: Max: {_SHAPER_DICT["shaperup_max"]} Min: {_SHAPER_DICT["shaperup_min"]} Value: {_SHAPER_DICT["shaperup_speed"]}')
-    _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
-    print(_SHAPER_CONTROL_URL)
-    if _COMMIT is False:
-        _COMPLETE = False
-        logout()
-    if _COMMIT is True:
-        # Define _SHAPER_CONTROL_DATA as a dictionary directly
-        _SHAPER_CONTROL_DICT = {
-            "queue_type": _SHAPER_DICT["queue_type"],
-            "shaperdown_cont": _SHAPER_DICT["shaperdown_cont"],
-            "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
-            "shaperdown_speed": _SHAPER_DICT["shaperdown_max"],
-            "shaperup_cont": _SHAPER_DICT["shaperup_cont"],
-            "shaperup_control": _SHAPER_DICT["shaperup_control"],
-            "shaperup_speed": _SHAPER_DICT["shaperup_max"]
-        }
-        # URL-encode the form data and Post
-        _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
-        _COMPLETE = True  # If we get to here Complete is considered True
-        logout()
-
-
 _MODIFY_SERVICE_URL = f'{_MODIFY_SERVICE_URL}?avcid={_AVCID}&userid={_USERID}'
 _soup = BeautifulSoup(
     _br.follow_link(Link(
@@ -582,8 +608,54 @@ _LOCID = _SERVICE_DICT[_AVCID]['locid']
 _COAT = _SERVICE_DICT[_AVCID]['coat']
 # Get speeds and print
 _SPEEDS_DICT = get_speeds_dict(_soup)
-print_speeds_table()
 
+if _SHAPER is True:
+    _br.follow_link(text='Services')
+    _shaperup_cont = ''
+    _shaperdown_cont = ''
+    for _key, values in _SPEEDS_DICT.items():
+        if _key == _C_PSID:
+            _speed_name = values['name']
+            pattern = re.escape('(') + "(.*?)" + re.escape(')')
+            _speed_plan = re.findall(pattern, _speed_name)
+            _speed_plan = _speed_plan[0].split('/')
+            _shaperdown_cont = int(int(_speed_plan[0]) * (_UP/100))
+            _shaperup_cont = int(int(_speed_plan[1]) * (_DOWN/100))
+    _SHAPER_DICT = get_shaper_control(_br)
+    if int(_SHAPER_DICT["shaperup_min"]) <=_shaperup_cont <= int(_SHAPER_DICT["shaperup_max"]):
+        logging.debug('Up Planned %s is valid.', _shaperup_cont)
+    else:
+        logging.error('Up Planned %s is not valid.', _shaperup_cont)
+        _COMPLETE = False
+        logout()
+    if int(_SHAPER_DICT["shaperdown_min"]) <= _shaperdown_cont <= int(_SHAPER_DICT["shaperdown_max"]):
+        logging.debug('Down Planned %s is valid.', _shaperdown_cont)
+    else:
+        logging.error('Down Planned %s is not valid.', _shaperdown_cont)
+        _COMPLETE = False
+        logout()
+    print_shaper_table(_shaperup_cont,_shaperdown_cont)
+    _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
+    if _COMMIT is True:
+        # Define _SHAPER_CONTROL_DATA as a dictionary directly
+        _SHAPER_CONTROL_DICT = {
+            "queue_type": _SHAPER_DICT["queue_type"],
+            "shaperdown_cont": _shaperdown_cont,
+            "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
+            "shaperdown_speed": _SHAPER_DICT["shaperdown_max"],
+            "shaperup_cont": _shaperup_cont,
+            "shaperup_control": _SHAPER_DICT["shaperup_control"],
+            "shaperup_speed": _SHAPER_DICT["shaperup_max"]
+        }
+        # URL-encode the form data and Post
+        _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
+        _COMPLETE = True  # If we get to here Complete is considered True
+        logout()
+    else:
+        _COMPLETE = False
+        logout()
+
+print_speeds_table()
 # check and cater for non-interactive eg. cron based entry of PSID
 if _PSID != '':
     _PSID_VALID = check_psid()
