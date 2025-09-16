@@ -271,28 +271,28 @@ def get_shaper_control(_br):
         text='Show Advanced Info'), features='lxml')
     logging.debug('url:%s', _br.geturl())
     _queue_type = None
-    _shaperdown_control = None
-    _shaperup_control = None
-    _shaperdown_cont = 'override'  # always override to keep this simple
-    _shaperup_cont = 'override'
+    _shaperdown_speedrol = None
+    _shaperup_speedrol = None
+    _shaperdown_speed = 'override'  # always override to keep this simple
+    _shaperup_speed = 'override'
     if _soup.find('input', attrs={'name': 'queue_type', 'value': 'shape'}).get('checked') is not None:
         _queue_type = 'shape'
     elif _soup.find('input', attrs={'name': 'queue_type', 'value': 'police'}).get('checked') is not None:
         _queue_type = 'police'
 
     if _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_none'}).get('checked') is not None:
-        _shaperup_control = 'none'
+        _shaperup_speedrol = 'none'
     elif _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_default'}).get('checked') is not None:
-        _shaperup_control = 'default'
+        _shaperup_speedrol = 'default'
     elif _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_override'}).get('checked') is not None:
-        _shaperup_control = 'override'
+        _shaperup_speedrol = 'override'
 
     if _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_none'}).get('checked') is not None:
-        _shaperdown_control = 'none'
+        _shaperdown_speedrol = 'none'
     elif _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_default'}).get('checked') is not None:
-        _shaperdown_control = 'default'
+        _shaperdown_speedrol = 'default'
     elif _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_override'}).get('checked') is not None:
-        _shaperdown_control = 'override'
+        _shaperdown_speedrol = 'override'
 
     _shaperdown_max = _soup.find(
         'input', attrs={'id': 'shaperdown_speed'}).get('max')
@@ -314,11 +314,11 @@ def get_shaper_control(_br):
     _shaper_dict = {}
     _shaper_dict = {
         'queue_type': _queue_type,
-        'shaperdown_cont': _shaperdown_cont,
-        'shaperdown_control': _shaperdown_control,
+        'shaperdown_cont': _shaperdown_speed,
+        'shaperdown_control': _shaperdown_speedrol,
         'shaperdown_speed': _shaperdown_speed,
-        'shaperup_cont': _shaperup_cont,
-        'shaperup_control': _shaperup_control,
+        'shaperup_cont': _shaperup_speed,
+        'shaperup_control': _shaperup_speedrol,
         'shaperup_speed': _shaperup_speed,
         'shaperdown_max': _shaperdown_max,
         'shaperdown_min': _shaperdown_min,
@@ -621,41 +621,41 @@ _SPEEDS_DICT = get_speeds_dict(_soup)
 
 if _SHAPER is True:
     _br.follow_link(text='Services')
-    _shaperup_cont = ''
-    _shaperdown_cont = ''
+    _shaperup_speed = ''
+    _shaperdown_speed = ''
     for _key, values in _SPEEDS_DICT.items():
         if _key == _C_PSID:
             _speed_name = values['name']
             pattern = re.escape('(') + "(.*?)" + re.escape(')')
             _speed_plan = re.findall(pattern, _speed_name)
             _speed_plan = _speed_plan[0].split('/')
-            _shaperdown_cont = int(int(_speed_plan[0]) * (_DOWN/100))
-            _shaperup_cont = int(int(_speed_plan[1]) * (_UP/100))
+            _shaperdown_speed = int(int(_speed_plan[0]) * (_DOWN/100))
+            _shaperup_speed = int(int(_speed_plan[1]) * (_UP/100))
     _SHAPER_DICT = get_shaper_control(_br)
-    if int(_SHAPER_DICT["shaperup_min"]) <= _shaperup_cont <= int(_SHAPER_DICT["shaperup_max"]):
-        logging.debug('Up Commit %s is valid.', _shaperup_cont)
+    if int(_SHAPER_DICT["shaperup_min"]) <= _shaperup_speed <= int(_SHAPER_DICT["shaperup_max"]):
+        logging.debug('Up Commit %s is valid.', _shaperup_speed)
     else:    
-        logging.error('Up Commit %s is not valid.', _shaperup_cont)
+        logging.error('Up Commit %s is not valid.', _shaperup_speed)
         _COMPLETE = False
         logout()
-    if int(_SHAPER_DICT["shaperdown_min"]) <= _shaperdown_cont <= int(_SHAPER_DICT["shaperdown_max"]):
-        logging.debug('Down Commit %s is valid.', _shaperdown_cont)
+    if int(_SHAPER_DICT["shaperdown_min"]) <= _shaperdown_speed <= int(_SHAPER_DICT["shaperdown_max"]):
+        logging.debug('Down Commit %s is valid.', _shaperdown_speed)
     else:
-        logging.error('Down Commit %s is not valid.', _shaperdown_cont)
+        logging.error('Down Commit %s is not valid.', _shaperdown_speed)
         _COMPLETE = False
         logout()
-    print_shaper_table(_shaperup_cont, _shaperdown_cont)
+    print_shaper_table(_shaperup_speed, _shaperdown_speed)
     _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
     if _COMMIT is True:
         # Define _SHAPER_CONTROL_DATA as a dictionary directly
         _SHAPER_CONTROL_DICT = {
             "queue_type": _SHAPER_DICT["queue_type"],
-            "shaperdown_cont": _shaperdown_cont,
+            "shaperdown_cont": _SHAPER_DICT["shaperdown_control"],
             "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
-            "shaperdown_speed": _SHAPER_DICT["shaperdown_max"],
-            "shaperup_cont": _shaperup_cont,
+            "shaperdown_speed": _shaperdown_speed,
+            "shaperup_cont": _SHAPER_DICT["shaperup_control"],
             "shaperup_control": _SHAPER_DICT["shaperup_control"],
-            "shaperup_speed": _SHAPER_DICT["shaperup_max"]
+            "shaperup_speed": _shaperup_speed
         }
         # URL-encode the form data and Post
         _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
