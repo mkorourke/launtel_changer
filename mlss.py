@@ -102,13 +102,13 @@ def create_parser():
         'shaper', help='Shaper control options')
     parser_shaper.add_argument(
         '--up',
-        default=108,
+        default=95,
         type=int,
         help='Shaper upload, percentage of plan speed.'
     )
     parser_shaper.add_argument(
         '--down',
-        default=95,
+        default=108,
         type=int,
         help='Shaper download, percentage of plan speed.'
     )
@@ -629,12 +629,12 @@ if _SHAPER is True:
             pattern = re.escape('(') + "(.*?)" + re.escape(')')
             _speed_plan = re.findall(pattern, _speed_name)
             _speed_plan = _speed_plan[0].split('/')
-            _shaperdown_cont = int(int(_speed_plan[0]) * (_UP/100))
-            _shaperup_cont = int(int(_speed_plan[1]) * (_DOWN/100))
+            _shaperdown_cont = int(int(_speed_plan[0]) * (_DOWN/100))
+            _shaperup_cont = int(int(_speed_plan[1]) * (_UP/100))
     _SHAPER_DICT = get_shaper_control(_br)
     if int(_SHAPER_DICT["shaperup_min"]) <= _shaperup_cont <= int(_SHAPER_DICT["shaperup_max"]):
         logging.debug('Up Commit %s is valid.', _shaperup_cont)
-    else:
+    else:    
         logging.error('Up Commit %s is not valid.', _shaperup_cont)
         _COMPLETE = False
         logout()
