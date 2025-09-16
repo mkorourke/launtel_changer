@@ -633,15 +633,15 @@ if _SHAPER is True:
             _shaperup_cont = int(int(_speed_plan[1]) * (_DOWN/100))
     _SHAPER_DICT = get_shaper_control(_br)
     if int(_SHAPER_DICT["shaperup_min"]) <= _shaperup_cont <= int(_SHAPER_DICT["shaperup_max"]):
-        logging.debug('Up Planned %s is valid.', _shaperup_cont)
+        logging.debug('Up Commit %s is valid.', _shaperup_cont)
     else:
-        logging.error('Up Planned %s is not valid.', _shaperup_cont)
+        logging.error('Up Commit %s is not valid.', _shaperup_cont)
         _COMPLETE = False
         logout()
     if int(_SHAPER_DICT["shaperdown_min"]) <= _shaperdown_cont <= int(_SHAPER_DICT["shaperdown_max"]):
-        logging.debug('Down Planned %s is valid.', _shaperdown_cont)
+        logging.debug('Down Commit %s is valid.', _shaperdown_cont)
     else:
-        logging.error('Down Planned %s is not valid.', _shaperdown_cont)
+        logging.error('Down Commit %s is not valid.', _shaperdown_cont)
         _COMPLETE = False
         logout()
     print_shaper_table(_shaperup_cont, _shaperdown_cont)
