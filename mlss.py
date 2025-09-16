@@ -358,15 +358,17 @@ def print_shaper_table(_up, _down):
     _shaper_table.add_row(*('Down Min', _SHAPER_DICT["shaperdown_min"]))
     _shaper_table.add_row(*('[bright_green]Down Value[/bright_green]',
                           f'[bright_green]{_SHAPER_DICT["shaperdown_speed"]}[/bright_green]'))
-    _shaper_table.add_row(
-        *('[bright_yellow]Down Planned[/bright_yellow]', f'[bright_yellow]{_down}[/bright_yellow]'))
+    if _COMMIT is True:
+        _shaper_table.add_row(
+            *('[bright_yellow]Down Commit[/bright_yellow]', f'[bright_yellow]{_down}[/bright_yellow]'))
     _shaper_table.add_row(*('Up Control', _SHAPER_DICT["shaperup_control"]))
     _shaper_table.add_row(*('Up Max', _SHAPER_DICT["shaperup_max"]))
     _shaper_table.add_row(*('Up Min', _SHAPER_DICT["shaperup_min"]))
     _shaper_table.add_row(*('[bright_green]Up Value[/bright_green]',
                           f'[bright_green]{_SHAPER_DICT["shaperup_speed"]}[/bright_green]'))
-    _shaper_table.add_row(
-        *('[bright_yellow]Up Planned[/bright_yellow]', f'[bright_yellow]{_up}[/bright_yellow]'))
+    if _COMMIT is True:
+        _shaper_table.add_row(
+            *('[bright_yellow]Up Commit[/bright_yellow]', f'[bright_yellow]{_up}[/bright_yellow]'))
     _console = Console()
     _console.print(_shaper_table)
 
