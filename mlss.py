@@ -410,7 +410,7 @@ def print_speeds_table():
             _speed_name = f'[bright_yellow]{_speed_name}[/bright_yellow]'
             _speed_name = f'[bright_yellow]{_speed_name}[/bright_yellow]'
             _speed_daily_spend = f'[bright_yellow]{_speed_daily_spend}[/bright_yellow]'
-        _speeds_table.add_row(*(_speed_name, _speed_name, _speed_daily_spend))
+        _speeds_table.add_row(*(_speed_psid, _speed_name, _speed_daily_spend))
 
     _console = Console()
     _console.print(_speeds_table)
