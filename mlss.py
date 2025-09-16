@@ -548,13 +548,10 @@ else:
 # Load variables from .env file
 load_dotenv()
 # Check and utilise ENV variables for user credentials
-_USERNAME = os.getenv("LAUNTEL_USERNAME")
-_PASSWORD = os.getenv("LAUNTEL_PASSWORD")
-# If outcome is None make ''
-if _USERNAME is None:
-    _USERNAME = ''
-if _PASSWORD is None:
-    _PASSWORD = ''
+if os.getenv("LAUNTEL_USERNAME") is not None:
+    _USERNAME = os.getenv("LAUNTEL_USERNAME")
+if os.getenv("LAUNTEL_PASSWORD") is not None:
+    _PASSWORD = os.getenv("LAUNTEL_PASSWORD")
 
 # if ENV not set, interactivly prompt for user credentials
 if _USERNAME == '' or _PASSWORD == '':
