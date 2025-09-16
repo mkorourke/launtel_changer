@@ -31,15 +31,13 @@ options:
   --down DOWN  Shaper download, percentage of plan speed.
 ````
 
-Optional: Configure variables _USERNAME and or _PASSWORD with your Launtel login details, if not configured the script will interactively prompt for username or password which ever is not set. 
+Optional: Configure variables _USERNAME and or _PASSWORD with your Launtel login details or set LAUNTEL_USERNAME = "your_username" and LAUNTEL_PASSWORD = "your_password" within a .env file.. If not configured the script will interactively prompt for username or password, which ever is not set.
 
 Use the -p option to define the Launtel PSID (or speed) specific to your discount or plan. If not set the script will display PSIDs available and interactively prompt.
 
-LAUNTEL_USERNAME and LAUNTEL_PASSWORD key-value pairs will be utlised if defined in a .env file.
+The script is view/dry-run by default, use the -c option to commit the speed change to Luantel. 
 
-The script is a dry-run by default, use the -c option to commit the speed change to Luantel. 
-
-Schedule using -p and .env options with your preferred scheduler.
+Schedule using -p using .env option with your preferred scheduler.
 
 Use 'shape' option to view Launtel shaper information, using the '-c shaper' option will commit a shape change. Defaults to 108% down and 95% up.
 Example:
