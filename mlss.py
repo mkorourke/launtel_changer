@@ -264,6 +264,19 @@ def check_psid():
     return _psid_valid
 
 
+def check_shaper(speed, min_key, max_key, percent, name):
+    """Validate shaper speed and log results."""
+    min_speed = int(_SHAPER_DICT[min_key])
+    max_speed = int(_SHAPER_DICT[max_key])
+    is_valid = min_speed <= speed <= max_speed
+    logging.debug('%s shaper %s %% is %svalid.', name, percent, '' if is_valid else 'not ')
+    if is_valid:
+        logging.debug('%s shaper commit %s is valid.', name, speed)
+    else:
+        logging.error('%s shaper commit %s is not valid.', name, speed)
+    return is_valid
+
+
 def get_queue_type(soup):
     """
     Get active shaper queue type
@@ -356,22 +369,23 @@ def get_shaper_table(_title):
     return table
 
 
-def print_shaper_table(_up, _down):
+def print_shaper_table(_down, _up):
     """
     Get the shaper table
     """
     _shaper_title = f'{_ISP} Shaper Control'
     _shaper_table = get_shaper_table(_shaper_title)
-    _shaper_table.add_row(*('Queue Type', _SHAPER_DICT["queue_type"]))
-    _shaper_table.add_row(
-        *('Down Control', _SHAPER_DICT["shaperdown_control"]))
+    _shaper_table.add_row(*('Queue Type',_SHAPER_DICT["queue_type"]))
+    _shaper_table.add_row(*('Down Control',
+                            _SHAPER_DICT["shaperdown_control"]))
     _shaper_table.add_row(*('Down Max', _SHAPER_DICT["shaperdown_max"]))
     _shaper_table.add_row(*('Down Min', _SHAPER_DICT["shaperdown_min"]))
     _shaper_table.add_row(*('[bright_green]Down Value[/bright_green]',
                           f'[bright_green]{_SHAPER_DICT["shaperdown_speed"]}[/bright_green]'))
     if _COMMIT is True:
         _shaper_table.add_row(
-            *('[bright_yellow]Down Commit[/bright_yellow]', f'[bright_yellow]{_down}[/bright_yellow]'))
+            *('[bright_yellow]Down Commit[/bright_yellow]',
+              f'[bright_yellow]{_down}[/bright_yellow]'))
     _shaper_table.add_row(*('Up Control', _SHAPER_DICT["shaperup_control"]))
     _shaper_table.add_row(*('Up Max', _SHAPER_DICT["shaperup_max"]))
     _shaper_table.add_row(*('Up Min', _SHAPER_DICT["shaperup_min"]))
@@ -658,21 +672,25 @@ if _SHAPER is True:
             _speed_plan = _speed_plan[0].split('/')
             _SHAPERDOWN_SPEED = int(int(_speed_plan[0]) * (_DOWN/100))
             _SHAPERUP_SPEED = int(int(_speed_plan[1]) * (_UP/100))
+            logging.debug('Down speed is %s.', _speed_plan[0])
+            logging.debug('Up speed is %s.', _speed_plan[1])
     _SHAPER_DICT = get_shaper_control(_br)
-    if int(_SHAPER_DICT["shaperup_min"]) <= _SHAPERUP_SPEED <= int(_SHAPER_DICT["shaperup_max"]):
-        logging.debug('Up Commit %s is valid.', _SHAPERUP_SPEED)
-    else:
-        logging.error('Up Commit %s is not valid.', _SHAPERUP_SPEED)
+
+    _SHAPERDOWN_VALID = check_shaper(
+        _SHAPERDOWN_SPEED, "shaperdown_min", "shaperdown_max", _DOWN, "Down"
+    )
+    _SHAPERUP_VALID = check_shaper(
+        _SHAPERUP_SPEED, "shaperup_min", "shaperup_max", _UP, "Up"
+    )
+
+    if not (_SHAPERDOWN_VALID and _SHAPERUP_VALID):
         _COMPLETE = False
         logout()
-    if int(_SHAPER_DICT["shaperdown_min"]) <= _SHAPERDOWN_SPEED <= int(_SHAPER_DICT["shaperdown_max"]):
-        logging.debug('Down Commit %s is valid.', _SHAPERDOWN_SPEED)
-    else:
-        logging.error('Down Commit %s is not valid.', _SHAPERDOWN_SPEED)
-        _COMPLETE = False
-        logout()
-    print_shaper_table(_SHAPERUP_SPEED, _SHAPERDOWN_SPEED)
+
+    print_shaper_table(_SHAPERDOWN_SPEED, _SHAPERUP_SPEED)
+
     _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
+
     if _COMMIT is True:
         # Define _SHAPER_CONTROL_DATA as a dictionary directly
         _SHAPER_CONTROL_DICT = {
