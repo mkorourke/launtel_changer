@@ -222,7 +222,8 @@ def submit_service_modification():
                             f'discount_code={_DISCOUNT_CODE}&'
                             f'avcid={_AVCID}&'
                             f'locid={_LOCID}&'
-                            f'coat={_COAT}')
+                            f'coat={_COAT}',
+                            f'churn={_CHURN}')
     _confirm_service_link = Link(
         base_url=_BASE_URL,
         url=_confirm_service_url,
@@ -263,71 +264,81 @@ def check_psid():
     return _psid_valid
 
 
+def get_queue_type(soup):
+    """
+    Get active shaper queue type
+    """
+    queue_types = ['shape', 'police']
+    for q_type in queue_types:
+        attrs = {'name': 'queue_type', 'value': q_type}
+        if soup.find('input', attrs=attrs).get('checked') is not None:
+            return q_type
+    return None
+
+
+def get_shaper_control_option(soup, control_name, options):
+    """
+    Get shaper control options
+    """
+    for option in options:
+        attrs = {'name': control_name, 'id': f'{control_name}_{option}'}
+        if soup.find('input', attrs=attrs).get('checked') is not None:
+            return option
+    return None
+
+
+def get_shaper_input_attribute(soup, input_id, attribute):
+    """
+    Get attribute from input element.
+    """
+    return soup.find('input', attrs={'id': input_id}).get(attribute)
+
+
 def get_shaper_control(_br):
     """
     Get shaper control info
     """
-    _soup = BeautifulSoup(_br.follow_link(
+    soup = BeautifulSoup(_br.follow_link(
         text='Show Advanced Info'), features='lxml')
     logging.debug('url:%s', _br.geturl())
-    _queue_type = None
-    _shaperdown_speedrol = None
-    _shaperup_speedrol = None
-    _shaperdown_speed = 'override'  # always override to keep this simple
-    _shaperup_speed = 'override'
-    if _soup.find('input', attrs={'name': 'queue_type', 'value': 'shape'}).get('checked') is not None:
-        _queue_type = 'shape'
-    elif _soup.find('input', attrs={'name': 'queue_type', 'value': 'police'}).get('checked') is not None:
-        _queue_type = 'police'
 
-    if _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_none'}).get('checked') is not None:
-        _shaperup_speedrol = 'none'
-    elif _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_default'}).get('checked') is not None:
-        _shaperup_speedrol = 'default'
-    elif _soup.find('input', attrs={'name': 'shaperup_control', 'id': 'shaperup_control_override'}).get('checked') is not None:
-        _shaperup_speedrol = 'override'
+    queue_type = get_queue_type(soup)
+    shaperdown_control = get_shaper_control_option(
+        soup, 'shaperdown_control', ['none', 'default', 'override'])
+    shaperup_control = get_shaper_control_option(
+        soup, 'shaperup_control', ['none', 'default', 'override'])
 
-    if _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_none'}).get('checked') is not None:
-        _shaperdown_speedrol = 'none'
-    elif _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_default'}).get('checked') is not None:
-        _shaperdown_speedrol = 'default'
-    elif _soup.find('input', attrs={'name': 'shaperdown_control', 'id': 'shaperdown_control_override'}).get('checked') is not None:
-        _shaperdown_speedrol = 'override'
+    shaperdown_speed = 'override'  # always override to keep this simple
+    shaperup_speed = 'override'
 
-    _shaperdown_max = _soup.find(
-        'input', attrs={'id': 'shaperdown_speed'}).get('max')
-    _shaperdown_min = _soup.find(
-        'input', attrs={'id': 'shaperdown_speed'}).get('min')
-    _shaperdown_speed = _soup.find(
-        'input', attrs={'id': 'shaperdown_speed'}).get('value')
+    shaperdown_max = get_shaper_input_attribute(soup, 'shaperdown_speed', 'max')
+    shaperdown_min = get_shaper_input_attribute(soup, 'shaperdown_speed', 'min')
+    shaperdown_speed_value = get_shaper_input_attribute(
+        soup, 'shaperdown_speed', 'value')
 
-    _shaperup_max = _soup.find(
-        'input', attrs={'id': 'shaperup_speed'}).get('max')
-    _shaperup_min = _soup.find(
-        'input', attrs={'id': 'shaperup_speed'}).get('min')
-    _shaperup_speed = _soup.find(
-        'input', attrs={'id': 'shaperup_speed'}).get('value')
+    shaperup_max = get_shaper_input_attribute(soup, 'shaperup_speed', 'max')
+    shaperup_min = get_shaper_input_attribute(soup, 'shaperup_speed', 'min')
+    shaperup_speed_value = get_shaper_input_attribute(soup, 'shaperup_speed', 'value')
 
-    _shaper_control_url = _soup.find(
+    shaper_control_url = soup.find(
         'form', attrs={'name': 'form-shaping'}).get('action')
 
-    _shaper_dict = {}
-    _shaper_dict = {
-        'queue_type': _queue_type,
-        'shaperdown_cont': _shaperdown_speed,
-        'shaperdown_control': _shaperdown_speedrol,
-        'shaperdown_speed': _shaperdown_speed,
-        'shaperup_cont': _shaperup_speed,
-        'shaperup_control': _shaperup_speedrol,
-        'shaperup_speed': _shaperup_speed,
-        'shaperdown_max': _shaperdown_max,
-        'shaperdown_min': _shaperdown_min,
-        'shaperup_max': _shaperup_max,
-        'shaperup_min': _shaperup_min,
-        'shaper_control_url': _shaper_control_url,
+    shaper_dict = {
+        'queue_type': queue_type,
+        'shaperdown_cont': shaperdown_speed,
+        'shaperdown_control': shaperdown_control,
+        'shaperdown_speed': shaperdown_speed_value,
+        'shaperup_cont': shaperup_speed,
+        'shaperup_control': shaperup_control,
+        'shaperup_speed': shaperup_speed_value,
+        'shaperdown_max': shaperdown_max,
+        'shaperdown_min': shaperdown_min,
+        'shaperup_max': shaperup_max,
+        'shaperup_min': shaperup_min,
+        'shaper_control_url': shaper_control_url,
     }
 
-    return _shaper_dict
+    return shaper_dict
 
 
 def get_shaper_table(_title):
@@ -386,6 +397,7 @@ def get_speeds_table(_title):
     table.add_column('PSID')
     table.add_column('SPEED')
     table.add_column('SPEND')
+    table.add_column('NTD UPGRADE')
     return table
 
 
@@ -402,15 +414,18 @@ def print_speeds_table():
         _speed_psid = _key
         _speed_name = _values['name']
         _speed_daily_spend = _values['spend']
+        _ntdupgrade = bool(int(_values['ntdupgrade']))
         if _key == _C_PSID and _LATEST is False:
             _speed_psid = f'[bright_green]{_speed_psid}[/bright_green]'
             _speed_name = f'[bright_green]{_speed_name}[/bright_green]'
             _speed_daily_spend = f'[bright_green]{_speed_daily_spend}[/bright_green]'
+            _ntdupgrade= f'[bright_green]{_ntdupgrade}[/bright_green]'
         elif _key == _C_PSID:
             _speed_name = f'[bright_yellow]{_speed_name}[/bright_yellow]'
             _speed_name = f'[bright_yellow]{_speed_name}[/bright_yellow]'
             _speed_daily_spend = f'[bright_yellow]{_speed_daily_spend}[/bright_yellow]'
-        _speeds_table.add_row(*(_speed_psid, _speed_name, _speed_daily_spend))
+            _ntdupgrade= f'[bright_yellow]{_ntdupgrade}[/bright_yellow]'
+        _speeds_table.add_row(*(_speed_psid, _speed_name, _speed_daily_spend, str(_ntdupgrade)))
 
     _console = Console()
     _console.print(_speeds_table)
@@ -418,7 +433,7 @@ def print_speeds_table():
 
 def get_speeds_dict(soup):
     """
-    Get a dict of speeds
+    Get a dict of speeds sorted by spend
     """
     _speeds = soup.find_all(
         'span', attrs={'data-value': True})
@@ -430,11 +445,18 @@ def get_speeds_dict(soup):
                 'class': 'col-sm-4'}).text.strip()
         _speed_psid = speed.get('data-value')
         _speed_daily_spend = speed.get('data-plancharge')
+        _speed_ntdupgrade = speed.get('data-ntdupgrade')
         _speeds_dict[_speed_psid] = {
-            'name': _speed_name,
-            'spend': _speed_daily_spend}
+            'name': _speed_name.replace('\t', '').replace('\n', '').replace('[1]', ''),
+            'spend': _speed_daily_spend,
+            'ntdupgrade': _speed_ntdupgrade,
+        }
+    # Sort the dictionary by spend value
+    _sorted_speeds_dict = dict(
+        sorted(_speeds_dict.items(), key=lambda x: x[1]['spend'])
+    )
 
-    return _speeds_dict
+    return _sorted_speeds_dict
 
 
 def get_service_dict(soup):
@@ -460,6 +482,7 @@ def get_service_dict(soup):
     _locid = soup.find(
         'input', attrs={'name': 'locid'}).get('value')
     _coat = soup.find('input', attrs={'name': 'coat'}).get('value')
+    _churn = soup.find('input', attrs={'name': 'coat'}).get('value')
 
     _service_dict = {}
     _service_dict[_avcid] = {
@@ -470,7 +493,8 @@ def get_service_dict(soup):
         'upgrade_options': _upgrade_options,
         'discount_code': _discount_code,
         'locid': _locid,
-        'coat': _coat}
+        'coat': _coat,
+        'churn': _churn}
 
     return _service_dict
 
@@ -618,35 +642,36 @@ _UPGRADE_OPTIONS = _SERVICE_DICT[_AVCID]['upgrade_options']
 _DISCOUNT_CODE = _SERVICE_DICT[_AVCID]['discount_code']
 _LOCID = _SERVICE_DICT[_AVCID]['locid']
 _COAT = _SERVICE_DICT[_AVCID]['coat']
+_CHURN = _SERVICE_DICT[_AVCID]['coat']
 # Get speeds and print
 _SPEEDS_DICT = get_speeds_dict(_soup)
 
 if _SHAPER is True:
     _br.follow_link(text='Services')
-    _shaperup_speed = ''
-    _shaperdown_speed = ''
+    _SHAPERUP_SPEED = ''
+    _SHAPERDOWN_SPEED = ''
     for _key, values in _SPEEDS_DICT.items():
         if _key == _C_PSID:
             _speed_name = values['name']
             pattern = re.escape('(') + "(.*?)" + re.escape(')')
             _speed_plan = re.findall(pattern, _speed_name)
             _speed_plan = _speed_plan[0].split('/')
-            _shaperdown_speed = int(int(_speed_plan[0]) * (_DOWN/100))
-            _shaperup_speed = int(int(_speed_plan[1]) * (_UP/100))
+            _SHAPERDOWN_SPEED = int(int(_speed_plan[0]) * (_DOWN/100))
+            _SHAPERUP_SPEED = int(int(_speed_plan[1]) * (_UP/100))
     _SHAPER_DICT = get_shaper_control(_br)
-    if int(_SHAPER_DICT["shaperup_min"]) <= _shaperup_speed <= int(_SHAPER_DICT["shaperup_max"]):
-        logging.debug('Up Commit %s is valid.', _shaperup_speed)
-    else:    
-        logging.error('Up Commit %s is not valid.', _shaperup_speed)
-        _COMPLETE = False
-        logout()
-    if int(_SHAPER_DICT["shaperdown_min"]) <= _shaperdown_speed <= int(_SHAPER_DICT["shaperdown_max"]):
-        logging.debug('Down Commit %s is valid.', _shaperdown_speed)
+    if int(_SHAPER_DICT["shaperup_min"]) <= _SHAPERUP_SPEED <= int(_SHAPER_DICT["shaperup_max"]):
+        logging.debug('Up Commit %s is valid.', _SHAPERUP_SPEED)
     else:
-        logging.error('Down Commit %s is not valid.', _shaperdown_speed)
+        logging.error('Up Commit %s is not valid.', _SHAPERUP_SPEED)
         _COMPLETE = False
         logout()
-    print_shaper_table(_shaperup_speed, _shaperdown_speed)
+    if int(_SHAPER_DICT["shaperdown_min"]) <= _SHAPERDOWN_SPEED <= int(_SHAPER_DICT["shaperdown_max"]):
+        logging.debug('Down Commit %s is valid.', _SHAPERDOWN_SPEED)
+    else:
+        logging.error('Down Commit %s is not valid.', _SHAPERDOWN_SPEED)
+        _COMPLETE = False
+        logout()
+    print_shaper_table(_SHAPERUP_SPEED, _SHAPERDOWN_SPEED)
     _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
     if _COMMIT is True:
         # Define _SHAPER_CONTROL_DATA as a dictionary directly
@@ -654,10 +679,10 @@ if _SHAPER is True:
             "queue_type": _SHAPER_DICT["queue_type"],
             "shaperdown_cont": _SHAPER_DICT["shaperdown_control"],
             "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
-            "shaperdown_speed": _shaperdown_speed,
+            "shaperdown_speed": _SHAPERDOWN_SPEED,
             "shaperup_cont": _SHAPER_DICT["shaperup_control"],
             "shaperup_control": _SHAPER_DICT["shaperup_control"],
-            "shaperup_speed": _shaperup_speed
+            "shaperup_speed": _SHAPERUP_SPEED
         }
         # URL-encode the form data and Post
         _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
