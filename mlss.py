@@ -397,7 +397,7 @@ def get_speeds_table(_title):
     table.add_column('PSID')
     table.add_column('SPEED')
     table.add_column('SPEND')
-    table.add_column('NTD UPGRADE')
+    table.add_column('NTDUPGRADE')
     return table
 
 
