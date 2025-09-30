@@ -51,6 +51,7 @@ _UPGRADE_OPTIONS = ''
 _DISCOUNT_CODE = ''
 _LOCID = ''
 _COAT = ''
+_NTD = False
 
 
 def signal_handler(sig, frame):
@@ -437,7 +438,10 @@ def add_speeds_row(table, label, speed, spend, ntd, color=None):
         speed = f'[{color}]{speed}[/{color}]'
         spend = f'[{color}]{spend}[/{color}]'
         ntd = f'[{color}]{ntd}[/{color}]'
-    table.add_row(*(label, speed, spend, ntd))
+    if _NTD:
+        table.add_row(*(label, speed, spend, ntd))
+    else:
+        table.add_row(*(label, speed, spend))
     return table
 
 
@@ -454,7 +458,8 @@ def get_speeds_table(_title):
     table.add_column('PSID')
     table.add_column('SPEED')
     table.add_column('SPEND')
-    table.add_column('NTDUPGRADE')
+    if _NTD:
+        table.add_column('NTDUPGRADE')
     return table
 
 
@@ -471,15 +476,25 @@ def print_speeds_table():
         _speed_psid = _key
         _speed_name = _values['name']
         _speed_daily_spend = _values['spend']
-        _ntdupgrade = bool(int(_values['ntdupgrade']))
+        if _values['ntdupgrade'] == '':
+            _ntdupgrade = _values['ntdupgrade']
+        else:
+            _ntdupgrade = bool(int(_values['ntdupgrade']))
+            _NTD = True  # pylint: disable=invalid-name
         _speed_colour = None
         if _key == _C_PSID and _LATEST is False:
             _speed_colour = 'bright_green'
         elif _key == _C_PSID:
             _speed_colour = 'bright_yellow'
-        _speeds_table = add_speeds_row(_speeds_table, _speed_psid, _speed_name, _speed_daily_spend, str(_ntdupgrade), _speed_colour)
+        _speeds_table = add_speeds_row(
+            _speeds_table,
+            _speed_psid,
+            _speed_name,
+            _speed_daily_spend,
+            str(_ntdupgrade),
+            _speed_colour)
 
-    _console=Console()
+    _console = Console()
     _console.print(_speeds_table)
 
 
@@ -487,24 +502,24 @@ def get_speeds_dict(soup):
     """
     Get a dict of speeds sorted by spend
     """
-    _speeds=soup.find_all(
+    _speeds = soup.find_all(
         'span', attrs={'data-value': True})
-    _speeds_dict={}
+    _speeds_dict = {}
 
     for speed in _speeds:
-        _speed_name=speed.find(
+        _speed_name = speed.find(
             'div', attrs={
                 'class': 'col-sm-4'}).text.strip()
-        _speed_psid=speed.get('data-value')
-        _speed_daily_spend=speed.get('data-plancharge')
-        _speed_ntdupgrade=speed.get('data-ntdupgrade')
-        _speeds_dict[_speed_psid]={
+        _speed_psid = speed.get('data-value')
+        _speed_daily_spend = speed.get('data-plancharge')
+        _speed_ntdupgrade = speed.get('data-ntdupgrade')
+        _speeds_dict[_speed_psid] = {
             'name': _speed_name.replace('\t', '').replace('\n', '').replace('[1]', ''),
             'spend': _speed_daily_spend,
             'ntdupgrade': _speed_ntdupgrade,
         }
     # Sort the dictionary by spend value
-    _sorted_speeds_dict=dict(
+    _sorted_speeds_dict = dict(
         sorted(_speeds_dict.items(), key=lambda x: x[1]['spend'])
     )
 
@@ -517,27 +532,27 @@ def get_service_dict(soup):
     """
     # Find all the values utilised within Launtels service modification
     # and necessary for next services of validations and script steps
-    _userid=soup.find(
+    _userid = soup.find(
         'input', attrs={'name': 'userid'}).get('value')
-    _c_psid=soup.find(
+    _c_psid = soup.find(
         'input', attrs={'name': 'psid'}).get('value')
-    _unpause=soup.find(
+    _unpause = soup.find(
         'input', attrs={'name': 'unpause'}).get('value')
-    _service_id=soup.find(
+    _service_id = soup.find(
         'input', attrs={
             'name': 'service_id'}).get('value')
-    _upgrade_options=soup.find(
+    _upgrade_options = soup.find(
         'span', attrs={'class': 'rollover list-group-item'}).get('value')
-    _discount_code=''  # /check_discount/0/{_AVCID}/
-    _avcid=soup.find(
+    _discount_code = ''  # /check_discount/0/{_AVCID}/
+    _avcid = soup.find(
         'input', attrs={'name': 'avcid'}).get('value')
-    _locid=soup.find(
+    _locid = soup.find(
         'input', attrs={'name': 'locid'}).get('value')
-    _coat=soup.find('input', attrs={'name': 'coat'}).get('value')
-    _churn=soup.find('input', attrs={'name': 'coat'}).get('value')
+    _coat = soup.find('input', attrs={'name': 'coat'}).get('value')
+    _churn = soup.find('input', attrs={'name': 'coat'}).get('value')
 
-    _service_dict={}
-    _service_dict[_avcid]={
+    _service_dict = {}
+    _service_dict[_avcid] = {
         'userid': _userid,
         'psid': _c_psid,
         'unpause': _unpause,
@@ -555,12 +570,12 @@ def print_active_service_status():
     """
     Check active service status
     """
-    _services_soup=BeautifulSoup(
+    _services_soup = BeautifulSoup(
         _br.follow_link(
             text='Services').read(),
         features='lxml')
     logging.debug('url:%s', _br.geturl())
-    _services_status=_services_soup.find(
+    _services_status = _services_soup.find(
         'dl', attrs={'class': 'service-dl'}).text.strip()
 
     if 'Active' in _services_status:
@@ -573,50 +588,50 @@ def print_cookies():
     """
     Print _browser session_id cookie
     """
-    _cookies=_br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
+    _cookies = _br._ua_handlers['_cookies'].cookiejar  # pylint: disable=protected-access
     for cookie in _cookies:
         if cookie.name == "session_id":
-            _session_id=cookie.value
+            _session_id = cookie.value
             logging.debug('%s=%s', cookie.name, _session_id)
 
 
 signal.signal(signal.SIGINT, signal_handler)
 # parse the arguments
-_parser=create_parser()
-args=_parser.parse_args()
+_parser = create_parser()
+args = _parser.parse_args()
 
 if args.debug is True:
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-    logger=logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
     logging.debug('Debug is True.')
 else:
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-    logger=logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
 
 # get the arguments value for psid
 if args.psid is not None:
-    _PSID=args.psid
+    _PSID = args.psid
 
 # get the arguments value for commit
 if args.commit is True:
     logging.debug('Commit is True.')
-    _COMMIT=True
+    _COMMIT = True
 else:
     logging.debug('Commit is False.')
 
 # get the arguments value for commit
 if args.latest is True:
     logging.debug('Use latest psid options is True.')
-    _LATEST=True
+    _LATEST = True
 else:
     logging.debug('Use latest psid options is False.')
 
 # get the arguments value for commit
 if args.command == 'shaper':
     logging.debug('Shaper control is True.')
-    _SHAPER=True
-    _UP=int(args.up)
-    _DOWN=int(args.down)
+    _SHAPER = True
+    _UP = int(args.up)
+    _DOWN = int(args.down)
 else:
     logging.debug('Shaper control is False.')
 
@@ -625,34 +640,34 @@ else:
 load_dotenv()
 # Check and utilise ENV variables for user credentials
 if os.getenv("LAUNTEL_USERNAME") is not None:
-    _USERNAME=os.getenv("LAUNTEL_USERNAME")
+    _USERNAME = os.getenv("LAUNTEL_USERNAME")
 if os.getenv("LAUNTEL_PASSWORD") is not None:
-    _PASSWORD=os.getenv("LAUNTEL_PASSWORD")
+    _PASSWORD = os.getenv("LAUNTEL_PASSWORD")
 
 # if ENV not set, interactivly prompt for user credentials
 if _USERNAME == '' or _PASSWORD == '':
     logging.debug('%s username or password not set.', _ISP)
-    _isp_credentials=get_credentials(f'Enter your {_ISP} credentials:')
-    _USERNAME=_isp_credentials[0]
-    _PASSWORD=_isp_credentials[1]
+    _isp_credentials = get_credentials(f'Enter your {_ISP} credentials:')
+    _USERNAME = _isp_credentials[0]
+    _PASSWORD = _isp_credentials[1]
 
 if _USERNAME == '' or _PASSWORD == '':
     logging.error('Quiting, %s username or password not set.', _ISP)
     sys.exit()
 
-_br=get_browser()
-_LOGIN_SUCCESSFUL=login()
+_br = get_browser()
+_LOGIN_SUCCESSFUL = login()
 if args.debug is True:
     print_cookies()
     print_active_service_status()
 # Make sure we are at the correct starting point
 _br.follow_link(text='Services')
 logging.debug('url:%s', _br.geturl())
-parsed_url=urlparse(_br.find_link(text='Show Advanced Info').url)
-_USERID=parse_qs(parsed_url.query)['userid'][0]
-_AVCID=parse_qs(parsed_url.query)['avcid'][0]
-_MODIFY_SERVICE_URL=f'{_MODIFY_SERVICE_URL}?avcid={_AVCID}&userid={_USERID}'
-_soup=BeautifulSoup(
+parsed_url = urlparse(_br.find_link(text='Show Advanced Info').url)
+_USERID = parse_qs(parsed_url.query)['userid'][0]
+_AVCID = parse_qs(parsed_url.query)['avcid'][0]
+_MODIFY_SERVICE_URL = f'{_MODIFY_SERVICE_URL}?avcid={_AVCID}&userid={_USERID}'
+_soup = BeautifulSoup(
     _br.follow_link(Link(
         base_url=_BASE_URL,
         url=_MODIFY_SERVICE_URL,
@@ -670,8 +685,8 @@ if _LATEST is True and check_latest(
     _soup.find(
         "button", {
             "onclick": "showLatest()"})) is True:
-    _LATEST_PSID_URL=f'{_MODIFY_SERVICE_URL}&latest=1'
-    _soup=BeautifulSoup(
+    _LATEST_PSID_URL = f'{_MODIFY_SERVICE_URL}&latest=1'
+    _soup = BeautifulSoup(
         _br.follow_link(Link(
             base_url=_BASE_URL,
             url=_LATEST_PSID_URL,
@@ -685,53 +700,53 @@ if _LATEST is True and check_latest(
     _br.select_form(name='manage_service')
 
 # Get a dict with all the service information
-_SERVICE_DICT=get_service_dict(_soup)
+_SERVICE_DICT = get_service_dict(_soup)
 # Set the remaining required variables
-_C_PSID=_SERVICE_DICT[_AVCID]['psid']
-_UNPAUSE=_SERVICE_DICT[_AVCID]['unpause']
-_SERVICE_ID=_SERVICE_DICT[_AVCID]['service_id']
-_UPGRADE_OPTIONS=_SERVICE_DICT[_AVCID]['upgrade_options']
-_DISCOUNT_CODE=_SERVICE_DICT[_AVCID]['discount_code']
-_LOCID=_SERVICE_DICT[_AVCID]['locid']
-_COAT=_SERVICE_DICT[_AVCID]['coat']
-_CHURN=_SERVICE_DICT[_AVCID]['coat']
+_C_PSID = _SERVICE_DICT[_AVCID]['psid']
+_UNPAUSE = _SERVICE_DICT[_AVCID]['unpause']
+_SERVICE_ID = _SERVICE_DICT[_AVCID]['service_id']
+_UPGRADE_OPTIONS = _SERVICE_DICT[_AVCID]['upgrade_options']
+_DISCOUNT_CODE = _SERVICE_DICT[_AVCID]['discount_code']
+_LOCID = _SERVICE_DICT[_AVCID]['locid']
+_COAT = _SERVICE_DICT[_AVCID]['coat']
+_CHURN = _SERVICE_DICT[_AVCID]['coat']
 # Get speeds and print
-_SPEEDS_DICT=get_speeds_dict(_soup)
+_SPEEDS_DICT = get_speeds_dict(_soup)
 
 if _SHAPER is True:
     _br.follow_link(text='Services')
-    _SHAPERUP_SPEED=''
-    _SHAPERDOWN_SPEED=''
+    _SHAPERUP_SPEED = ''
+    _SHAPERDOWN_SPEED = ''
     for _key, values in _SPEEDS_DICT.items():
         if _key == _C_PSID:
-            _speed_name=values['name']
-            pattern=re.escape('(') + "(.*?)" + re.escape(')')
-            _speed_plan=re.findall(pattern, _speed_name)
-            _speed_plan=_speed_plan[0].split('/')
-            _SHAPERDOWN_SPEED=int(int(_speed_plan[0]) * (_DOWN/100))
-            _SHAPERUP_SPEED=int(int(_speed_plan[1]) * (_UP/100))
+            _speed_name = values['name']
+            pattern = re.escape('(') + "(.*?)" + re.escape(')')
+            _speed_plan = re.findall(pattern, _speed_name)
+            _speed_plan = _speed_plan[0].split('/')
+            _SHAPERDOWN_SPEED = int(int(_speed_plan[0]) * (_DOWN/100))
+            _SHAPERUP_SPEED = int(int(_speed_plan[1]) * (_UP/100))
             logging.debug('Down speed is %s.', _speed_plan[0])
             logging.debug('Up speed is %s.', _speed_plan[1])
-    _SHAPER_DICT=get_shaper_control(_br)
+    _SHAPER_DICT = get_shaper_control(_br)
 
-    _SHAPERDOWN_VALID=check_shaper(
+    _SHAPERDOWN_VALID = check_shaper(
         _SHAPERDOWN_SPEED, "shaperdown_min", "shaperdown_max", _DOWN, "Down"
     )
-    _SHAPERUP_VALID=check_shaper(
+    _SHAPERUP_VALID = check_shaper(
         _SHAPERUP_SPEED, "shaperup_min", "shaperup_max", _UP, "Up"
     )
 
     if not (_SHAPERDOWN_VALID and _SHAPERUP_VALID):
-        _COMPLETE=False
+        _COMPLETE = False
         logout()
 
     print_shaper_table(_SHAPERDOWN_SPEED, _SHAPERUP_SPEED)
 
-    _SHAPER_CONTROL_URL=_BASE_URL + _SHAPER_DICT["shaper_control_url"]
+    _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
 
     if _COMMIT is True:
         # Define _SHAPER_CONTROL_DATA as a dictionary directly
-        _SHAPER_CONTROL_DICT={
+        _SHAPER_CONTROL_DICT = {
             "queue_type": _SHAPER_DICT["queue_type"],
             "shaperdown_cont": _SHAPER_DICT["shaperdown_control"],
             "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
@@ -742,24 +757,24 @@ if _SHAPER is True:
         }
         # URL-encode the form data and Post
         _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
-        _COMPLETE=True  # If we get to here Complete is considered True
+        _COMPLETE = True  # If we get to here Complete is considered True
         logout()
     else:
-        _COMPLETE=False
+        _COMPLETE = False
         logout()
 
 print_speeds_table()
 # check and cater for non-interactive eg. cron based entry of PSID
 if _PSID != '':
-    _PSID_VALID=check_psid()
+    _PSID_VALID = check_psid()
     # if non-interactive PSID is false, logout
     if _PSID_VALID is False:
         logout()
 
 # check and cater for interactive entry of PSID, re-prompt if PSID is invalid
 while _PSID_VALID is False:
-    _PSID=input('Please enter psid: ')
-    _PSID_VALID=check_psid()
+    _PSID = input('Please enter psid: ')
+    _PSID_VALID = check_psid()
 
 if _PSID_VALID is True:
     submit_service_modification()
@@ -767,5 +782,5 @@ else:
     logging.error("Requested psid is not valid.")
     logout()
 
-_COMPLETE=True  # If we get to here Complete is considered True
+_COMPLETE = True  # If we get to here Complete is considered True
 logout()
