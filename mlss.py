@@ -38,6 +38,7 @@ _PSID_VALID = False
 _PSID = ''
 _UP = ''
 _DOWN = ''
+_SHAPER_CONTROL_OPTION = "override"
 
 _SHAPER_DICT = {}
 _SERVICE_DICT = {}
@@ -333,8 +334,6 @@ def get_shaper_control(_br):
         soup, 'shaperdown_control', ['none', 'default', 'override'])
     shaperup_control = get_shaper_control_option(
         soup, 'shaperup_control', ['none', 'default', 'override'])
-    shaperdown_speed = 'override'  # always override to keep this simple
-    shaperup_speed = 'override'
 
     shaperdown_max = get_shaper_input_attribute(
         soup, 'shaperdown_speed', 'max')
@@ -353,10 +352,10 @@ def get_shaper_control(_br):
 
     shaper_dict = {
         'queue_type': queue_type,
-        'shaperdown_cont': shaperdown_speed,
+        'shaperdown_cont': shaperdown_control,
         'shaperdown_control': shaperdown_control,
         'shaperdown_speed': shaperdown_speed_value,
-        'shaperup_cont': shaperup_speed,
+        'shaperup_cont': shaperup_control,
         'shaperup_control': shaperup_control,
         'shaperup_speed': shaperup_speed_value,
         'shaperdown_max': shaperdown_max,
@@ -744,25 +743,39 @@ if _SHAPER is True:
     print_shaper_table(_SHAPERDOWN_SPEED, _SHAPERUP_SPEED)
 
     _SHAPER_CONTROL_URL = _BASE_URL + _SHAPER_DICT["shaper_control_url"]
-
     if _COMMIT is True:
         # Define _SHAPER_CONTROL_DATA as a dictionary directly
         _SHAPER_CONTROL_DICT = {
             "queue_type": _SHAPER_DICT["queue_type"],
-            "shaperdown_cont": _SHAPER_DICT["shaperdown_control"],
-            "shaperdown_control": _SHAPER_DICT["shaperdown_control"],
+            "shaperdown_cont": _SHAPER_CONTROL_OPTION,
+            "shaperdown_control": _SHAPER_CONTROL_OPTION,
             "shaperdown_speed": _SHAPERDOWN_SPEED,
-            "shaperup_cont": _SHAPER_DICT["shaperup_control"],
-            "shaperup_control": _SHAPER_DICT["shaperup_control"],
+            "shaperup_cont": _SHAPER_CONTROL_OPTION,
+            "shaperup_control": _SHAPER_CONTROL_OPTION,
             "shaperup_speed": _SHAPERUP_SPEED
         }
-        # URL-encode the form data and Post
-        _br.open(_SHAPER_CONTROL_URL, urlencode(_SHAPER_CONTROL_DICT))
-        _COMPLETE = True  # If we get to here Complete is considered True
-        logout()
-    else:
-        _COMPLETE = False
-        logout()
+        # Encode the data to URL-encoded format
+        _ENCODED_DATA = urlencode(_SHAPER_CONTROL_DICT)
+        # Debug: Print the encoded data to verify
+        logging.debug('encoded_data:%s',_ENCODED_DATA)
+        # Set Content-Type header for x-www-form-urlencoded
+        _br.addheaders = [('Content-Type', 'application/x-www-form-urlencoded')]
+        # Encode the data to URL-encoded format and Post
+        _confirm_soup = BeautifulSoup(_br.open(_SHAPER_CONTROL_URL, data=_ENCODED_DATA).read(), features='lxml')
+        logging.debug('url:%s', _br.geturl())
+        _confirm_status = _confirm_soup.findAll(
+            'div', attrs={'class': 'alert-content'})
+        for status in _confirm_status:
+            _CS = str(status.encode('utf-8'))
+            if 'Shaping settings updated' in _CS:
+                logging.info('%s status is "Shaping settings updated - may take a minute to take effect".', _ISP)
+                _COMPLETE = True
+                logout()
+        if not _COMPLETE:
+            logging.error(
+                '%s status is not "Shaping settings updated - may take a minute to take effect", please check portal.',
+                _ISP)
+            logout()
 
 print_speeds_table()
 # check and cater for non-interactive eg. cron based entry of PSID
