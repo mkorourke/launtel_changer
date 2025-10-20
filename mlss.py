@@ -776,8 +776,8 @@ if _SHAPER is True:
                 '%s status is not "Shaping settings updated - may take a minute to take effect", please check portal.',
                 _ISP)
             logout()
-    else: 
-        # Commit is false, 
+    else:
+        # Commit is false
         # Set Complte to True and Logout
         _COMPLETE = True
         logout()
