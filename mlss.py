@@ -223,8 +223,9 @@ def submit_service_modification():
                             f'discount_code={_DISCOUNT_CODE}&'
                             f'avcid={_AVCID}&'
                             f'locid={_LOCID}&'
-                            f'coat={_COAT}',
+                            f'coat={_COAT}&'
                             f'churn={_CHURN}')
+    logging.debug('confirm_service_url:%s', _confirm_service_url)
     _confirm_service_link = Link(
         base_url=_BASE_URL,
         url=_confirm_service_url,
